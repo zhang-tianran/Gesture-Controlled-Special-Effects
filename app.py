@@ -19,8 +19,30 @@ from model import PointHistoryClassifier
 
 from KazuhitoTakahashiUtils.helpers import *
 
+def cartoon_effect(frame): 
+    # prepare color
+    img_color = cv.pyrDown(cv.pyrDown(frame))
+    for _ in range(3):
+        img_color = cv.bilateralFilter(img_color, 9, 9, 7)
+    img_color = cv.pyrUp(cv.pyrUp(img_color))
+
+    # prepare edges
+    img_edges = cv.cvtColor(frame, cv.COLOR_RGB2GRAY)
+    img_edges = cv.adaptiveThreshold(
+        cv.medianBlur(img_edges, 7), 255,
+        cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY,
+        9, 2,)
+    img_edges = cv.cvtColor(img_edges, cv.COLOR_GRAY2RGB)
+
+    # combine color and edges
+    frame = cv.bitwise_and(img_color, img_edges)
+    return frame
+
 
 def main():
+
+    panorama_mode = False
+    cartoon_mode = False
 
     use_brect = True
 
@@ -34,6 +56,12 @@ def main():
         min_detection_confidence=0.7,
         min_tracking_confidence=0.5,
     )
+
+    if (panorama_mode): 
+        panorama = cv.imread('panorama.png')
+        view_start = 0
+        view_shift_speed = 1000
+        #  view_shift_speed = 400
 
     keypoint_classifier = KeyPointClassifier()
     point_history_classifier = PointHistoryClassifier()
@@ -82,6 +110,9 @@ def main():
         image = cv.flip(image, 1)  # ミラー表示
         debug_image = copy.deepcopy(image)
 
+        if (cartoon_mode): 
+            debug_image = cartoon_effect(debug_image)
+
         # 検出実施 #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
@@ -109,12 +140,21 @@ def main():
 
                 # ハンドサイン分類
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                print("hand_sign_id: ", hand_sign_id)
+                #  print("hand_sign_id: ", hand_sign_id)
 
-                if (hand_sign_id == 0): 
-                    pyautogui.scroll(-5)
-                elif (hand_sign_id == 1): 
-                    pyautogui.scroll(5)
+                #  if (hand_sign_id == 0): 
+                #      view_start += view_shift_speed
+                #      pyautogui.scroll(-5)
+                #  elif (hand_sign_id == 1): 
+                #      view_start -= view_shift_speed
+                #      pyautogui.scroll(5)
+
+                
+                if panorama_mode and hand_sign_id == 2: 
+                    if landmark_list[8][0] > point_history[-1][0]: 
+                        view_start += view_shift_speed
+                    else: 
+                        view_start -= view_shift_speed
 
 
                 if hand_sign_id == 2:  # 指差しサイン
@@ -150,8 +190,14 @@ def main():
         debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, mode, number)
 
-        # 画面反映 #############################################################
-        cv.imshow('Hand Gesture Recognition', debug_image)
+        if panorama_mode: 
+            view_width = 5000
+            view_start = max(0, view_start)
+            panorama_in_view = panorama[:,view_start:view_start+view_width]
+            cv.imshow('Hand Gesture Recognition', panorama_in_view)
+        else: 
+            # 画面反映 #############################################################
+            cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
     cv.destroyAllWindows()
