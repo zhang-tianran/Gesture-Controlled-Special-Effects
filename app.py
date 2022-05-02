@@ -39,10 +39,22 @@ def cartoon_effect(frame):
     return frame
 
 
+def draw_point_history(image, point_history):
+    pre = None
+    for index, point in enumerate(point_history):
+        if point[0] != 0 and point[1] != 0:
+            if pre == None:
+                pre = point
+            else: 
+                cv.line(image, pre, point, (200, 140, 30), 2)
+                pre = point
+    return image
+
 def main():
 
     panorama_mode = False
     cartoon_mode = False
+    drawing_mode = True
 
     use_brect = True
 
@@ -65,6 +77,7 @@ def main():
 
     keypoint_classifier = KeyPointClassifier()
     point_history_classifier = PointHistoryClassifier()
+    canvas = np.zeros((1, 1, 3))
 
     # ラベル読み込み ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
@@ -187,7 +200,6 @@ def main():
         else:
             point_history.append([0, 0])
 
-        debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, mode, number)
 
         if panorama_mode: 
@@ -195,6 +207,12 @@ def main():
             view_start = max(0, view_start)
             panorama_in_view = panorama[:,view_start:view_start+view_width]
             cv.imshow('Hand Gesture Recognition', panorama_in_view)
+        elif drawing_mode: 
+            h, w, c = debug_image.shape
+            canvas = cv.resize(canvas, (w, h))
+            canvas = draw_point_history(canvas, point_history)
+            final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
+            cv.imshow('Hand Gesture Recognition', final)
         else: 
             # 画面反映 #############################################################
             cv.imshow('Hand Gesture Recognition', debug_image)
