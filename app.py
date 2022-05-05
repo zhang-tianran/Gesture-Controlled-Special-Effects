@@ -38,6 +38,26 @@ def cartoon_effect(frame):
     frame = cv.bitwise_and(img_color, img_edges)
     return frame
 
+def tunnel_effect(image, landmark): 
+    (h,w) = image.shape[:2]
+    center = np.array([landmark[0], landmark[1]])
+    radius = h / 2.5
+
+    i,j = np.mgrid[0:h, 0:w]
+    xymap = np.dstack([j,i]).astype(np.float32) # "identity" map
+
+    # coordinates relative to center
+    coords = (xymap - center)
+    # distance to center
+    dist = np.linalg.norm(coords, axis=2)
+    # touch only what's outside of the circle
+    mask = (dist >= radius)
+    # project onto circle (calculate unit vectors, move onto circle, then back to top-left origin)
+    xymap[mask] = coords[mask] / dist[mask,None] * radius + center
+
+    out = cv.remap(image, map1=xymap, map2=None, interpolation=cv.INTER_LINEAR)
+    return out
+
 
 def draw_point_history(image, point_history):
     pre = None
@@ -54,7 +74,8 @@ def main():
 
     panorama_mode = False
     cartoon_mode = False
-    drawing_mode = True
+    drawing_mode = False
+    tunnel_mode = True
 
     use_brect = True
 
@@ -125,6 +146,7 @@ def main():
 
         if (cartoon_mode): 
             debug_image = cartoon_effect(debug_image)
+        
 
         # 検出実施 #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -162,6 +184,8 @@ def main():
                 #      view_start -= view_shift_speed
                 #      pyautogui.scroll(5)
 
+                if (tunnel_mode): 
+                    debug_image = tunnel_effect(debug_image, landmark_list[9])
                 
                 if panorama_mode and hand_sign_id == 2: 
                     if landmark_list[8][0] > point_history[-1][0]: 
