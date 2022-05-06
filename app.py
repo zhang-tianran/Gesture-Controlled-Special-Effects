@@ -123,7 +123,7 @@ def main():
             row[0] for row in point_history_classifier_labels
         ]
 
-    stylization_model = hub.load("model/image_stylization")
+    #  stylization_model = hub.load("model/image_stylization")
     style_image = cv.cvtColor(cv.imread("assets/starry-night.jpeg"), cv.COLOR_BGR2RGB)
     style_image = img_as_float32(style_image)
 
