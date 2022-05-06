@@ -7,7 +7,7 @@ import argparse
 from collections import Counter
 from collections import deque
 
-import pyautogui
+#  import pyautogui
 
 import cv2 as cv
 import numpy as np
@@ -72,10 +72,13 @@ def draw_point_history(image, point_history):
 
 def main():
 
+    in_selection_mode = False
+    current_mode = 0
+
     panorama_mode = False
     cartoon_mode = False
     drawing_mode = False
-    tunnel_mode = True
+    tunnel_mode = False
 
     use_brect = True
 
@@ -144,9 +147,6 @@ def main():
         image = cv.flip(image, 1)  # ミラー表示
         debug_image = copy.deepcopy(image)
 
-        if (cartoon_mode): 
-            debug_image = cartoon_effect(debug_image)
-        
 
         # 検出実施 #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -193,6 +193,15 @@ def main():
                     else: 
                         view_start -= view_shift_speed
 
+                print("in_selection_mode? ", in_selection_mode)
+                print("current_mode: ", current_mode)
+                print("hand_sign_id: ", hand_sign_id)
+                if (in_selection_mode): 
+                    current_mode = hand_sign_id
+                else: 
+                    if (current_mode == 0): # graphic effects
+                        if (hand_sign_id == 2): 
+                            debug_image = cartoon_effect(debug_image)
 
                 if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
