@@ -24,6 +24,8 @@ from KazuhitoTakahashiUtils.helpers import *
 import tensorflow as tf
 import tensorflow_hub as hub
 
+from point_art import *
+
 def cartoon_effect(frame): 
     # prepare color
     img_color = cv.pyrDown(cv.pyrDown(frame))
@@ -63,8 +65,7 @@ def tunnel_effect(image, landmark):
     out = cv.remap(image, map1=xymap, map2=None, interpolation=cv.INTER_LINEAR)
     return out
 
-
-def draw_point_history(image, point_history):
+def drawing(image, point_history):
     pre = None
     for index, point in enumerate(point_history):
         if point[0] != 0 and point[1] != 0:
@@ -190,11 +191,9 @@ def main():
                     landmark_list)
                 pre_processed_point_history_list = pre_process_point_history(
                     debug_image, point_history)
-                # 学習データ保存
                 logging_csv(number, mode, pre_processed_landmark_list,
                             pre_processed_point_history_list)
 
-                # ハンドサイン分類
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 #  print("hand_sign_id: ", hand_sign_id)
 
@@ -213,18 +212,26 @@ def main():
                         view_start += view_shift_speed
                     else: 
                         view_start -= view_shift_speed
+                
+
+                #  print("in_selection_mode? ", in_selection_mode)
+                #  print("current_mode: ", current_mode)
+                #  print("hand_sign_id: ", hand_sign_id)
+
+                if (hand_sign_id == 1): # cartoon
+                    debug_image = cartoon_effect(debug_image)
+                elif (hand_sign_id == 2): # ghibli stylization
+                    stylization_popup(stylization_model, debug_image, style_image_og)
+                elif (hand_sign_id == 3): # point art stylization
+                    debug_image = run_impressionistic_filter(debug_image, False)
+                elif (hand_sign_id == 4): # rainy day stylization
+                    debug_image = run_impressionistic_filter(debug_image, True)
+                
+
 
                 print("in_selection_mode? ", in_selection_mode)
                 print("current_mode: ", current_mode)
                 print("hand_sign_id: ", hand_sign_id)
-                if (in_selection_mode): 
-                    current_mode = hand_sign_id
-                else: 
-                    if (current_mode == 0): # graphic effects
-                        if (hand_sign_id == 2): # cartoon
-                            debug_image = cartoon_effect(debug_image)
-                        elif (hand_sign_id == 0): # ghibli stylization
-                            stylization_popup(stylization_model, debug_image, style_image_og)
 
                 if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
@@ -266,7 +273,7 @@ def main():
         elif drawing_mode: 
             h, w, c = debug_image.shape
             canvas = cv.resize(canvas, (w, h))
-            canvas = draw_point_history(canvas, point_history)
+            canvas = drawing(canvas, point_history)
             final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
         else: 

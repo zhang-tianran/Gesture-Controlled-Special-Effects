@@ -1,6 +1,8 @@
-
+.DS_Store
 env/
 venv/
+
+__pycache__
 
 model/compressed_image_stylization.tar.gz
 model/image_stylization/*
