@@ -123,9 +123,11 @@ def main():
             row[0] for row in point_history_classifier_labels
         ]
 
-    #  stylization_model = hub.load("model/image_stylization")
-    style_image = cv.cvtColor(cv.imread("assets/starry-night.jpeg"), cv.COLOR_BGR2RGB)
+    stylization_model = hub.load("model/image_stylization")
+    style_image = cv.cvtColor(cv.imread("assets/ghibli-style.png"), cv.COLOR_BGR2RGB)
     style_image = img_as_float32(style_image)
+    style_height = style_image.shape[0]
+    style_width = style_image.shape[1]
 
     # FPS計測モジュール ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
@@ -212,16 +214,25 @@ def main():
                         if (hand_sign_id == 2): # cartoon
                             debug_image = cartoon_effect(debug_image)
                         elif (hand_sign_id == 0): # ghibli stylization
-                            pass
-                            #  temp_debug_image = tf.expand_dims(debug_image, 0)
-                            #  temp_debug_image = img_as_float32(temp_debug_image)
+                            #  pass
+                            temp_debug_image = tf.expand_dims(debug_image, 0)
+                            temp_debug_image = img_as_float32(temp_debug_image)
 
-                            #  temp_height = debug_image.shape[1]
-                            #  temp_width = debug_image.shape[0]
 
-                            #  temp_style_image = tf.image.resize(style_image, (temp_height, temp_width), preserve_aspect_ratio=True)
-                            #  temp_style_image = tf.expand_dims(temp_style_image, 0)
-                            #  debug_image = stylization_model(temp_debug_image, temp_style_image)[0]
+                            temp_height = debug_image.shape[1]
+                            temp_width = debug_image.shape[0]
+
+
+                            temp_style_image = tf.image.resize(style_image, (temp_height, temp_width), preserve_aspect_ratio=True)
+
+                            print(temp_debug_image.shape)
+                            temp_debug_image = tf.convert_to_tensor(temp_debug_image)
+                            temp_style_image = tf.image.resize(style_image, (temp_height, temp_width), preserve_aspect_ratio=True)
+                            temp_style_image = tf.expand_dims(temp_style_image, 0)
+                            hello = stylization_model(temp_debug_image, temp_style_image)
+                            hello = np.asarray(hello[0][0])
+                            cv.imshow("hello", hello)
+                            #  debug_image = hello
 
                 if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
