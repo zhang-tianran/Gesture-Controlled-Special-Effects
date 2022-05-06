@@ -14,6 +14,9 @@ from skimage import img_as_float32
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
+import random
+from scipy.spatial import distance
+from sklearn.cluster import KMeans
 
 from KazuhitoTakahashiUtils import CvFpsCalc
 from model import KeyPointClassifier
@@ -23,6 +26,8 @@ from KazuhitoTakahashiUtils.helpers import *
 
 import tensorflow as tf
 import tensorflow_hub as hub
+
+from point_art import *
 
 def cartoon_effect(frame): 
     # prepare color
@@ -178,11 +183,9 @@ def main():
                     landmark_list)
                 pre_processed_point_history_list = pre_process_point_history(
                     debug_image, point_history)
-                # 学習データ保存
                 logging_csv(number, mode, pre_processed_landmark_list,
                             pre_processed_point_history_list)
 
-                # ハンドサイン分類
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 #  print("hand_sign_id: ", hand_sign_id)
 
@@ -208,13 +211,18 @@ def main():
                 if (in_selection_mode): 
                     current_mode = hand_sign_id
                 else: 
-                    if (current_mode == 0): # graphic effects
-                        if (hand_sign_id == 2): # cartoon
+                    if (current_mode == 3): # graphic effects
+                        if (hand_sign_id == 1): # cartoon
                             debug_image = cartoon_effect(debug_image)
-                        elif (hand_sign_id == 0): # ghibli stylization
+                        elif (hand_sign_id == 2): # ghibli stylization
                             pass
+                        elif (hand_sign_id == 3): # point art stylization
+                            debug_image = run_impressionistic_filter(debug_image, False)
+                        elif (hand_sign_id == 4): # rainy day stylization
+                            debug_image = run_impressionistic_filter(debug_image, True)
                             #  temp_debug_image = tf.expand_dims(debug_image, 0)
                             #  temp_debug_image = img_as_float32(temp_debug_image)
+                            
 
                             #  temp_height = debug_image.shape[1]
                             #  temp_width = debug_image.shape[0]
