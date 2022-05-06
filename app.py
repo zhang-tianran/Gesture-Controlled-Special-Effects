@@ -14,9 +14,6 @@ from skimage import img_as_float32
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
-import random
-from scipy.spatial import distance
-from sklearn.cluster import KMeans
 
 from KazuhitoTakahashiUtils import CvFpsCalc
 from model import KeyPointClassifier
@@ -68,8 +65,7 @@ def tunnel_effect(image, landmark):
     out = cv.remap(image, map1=xymap, map2=None, interpolation=cv.INTER_LINEAR)
     return out
 
-
-def draw_point_history(image, point_history):
+def drawing(image, point_history):
     pre = None
     for index, point in enumerate(point_history):
         if point[0] != 0 and point[1] != 0:
@@ -204,22 +200,33 @@ def main():
                         view_start += view_shift_speed
                     else: 
                         view_start -= view_shift_speed
+                
 
-                print("in_selection_mode? ", in_selection_mode)
-                print("current_mode: ", current_mode)
-                print("hand_sign_id: ", hand_sign_id)
-                if (in_selection_mode): 
-                    current_mode = hand_sign_id
-                else: 
-                    if (current_mode == 3): # graphic effects
-                        if (hand_sign_id == 1): # cartoon
-                            debug_image = cartoon_effect(debug_image)
-                        elif (hand_sign_id == 2): # ghibli stylization
-                            pass
-                        elif (hand_sign_id == 3): # point art stylization
-                            debug_image = run_impressionistic_filter(debug_image, False)
-                        elif (hand_sign_id == 4): # rainy day stylization
-                            debug_image = run_impressionistic_filter(debug_image, True)
+                if (hand_sign_id == 1): # cartoon
+                    debug_image = cartoon_effect(debug_image)
+                elif (hand_sign_id == 2): # ghibli stylization
+                    pass
+                elif (hand_sign_id == 3): # point art stylization
+                    debug_image = run_impressionistic_filter(debug_image, False)
+                elif (hand_sign_id == 4): # rainy day stylization
+                    debug_image = run_impressionistic_filter(debug_image, True)
+                
+
+                
+                # in_selection_mode = (hand_sign_id == 0)
+
+                # if (in_selection_mode and hand_sign_id != 0): 
+                #     current_mode = hand_sign_id
+                # else: 
+                #     if (current_mode == 3): # graphic effects
+                #         if (hand_sign_id == 1): # cartoon
+                #             debug_image = cartoon_effect(debug_image)
+                #         elif (hand_sign_id == 2): # ghibli stylization
+                #             pass
+                #         elif (hand_sign_id == 3): # point art stylization
+                #             debug_image = run_impressionistic_filter(debug_image, False)
+                #         elif (hand_sign_id == 4): # rainy day stylization
+                #             debug_image = run_impressionistic_filter(debug_image, True)
                             #  temp_debug_image = tf.expand_dims(debug_image, 0)
                             #  temp_debug_image = img_as_float32(temp_debug_image)
                             
@@ -230,6 +237,10 @@ def main():
                             #  temp_style_image = tf.image.resize(style_image, (temp_height, temp_width), preserve_aspect_ratio=True)
                             #  temp_style_image = tf.expand_dims(temp_style_image, 0)
                             #  debug_image = stylization_model(temp_debug_image, temp_style_image)[0]
+
+                print("in_selection_mode? ", in_selection_mode)
+                print("current_mode: ", current_mode)
+                print("hand_sign_id: ", hand_sign_id)
 
                 if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
@@ -271,7 +282,7 @@ def main():
         elif drawing_mode: 
             h, w, c = debug_image.shape
             canvas = cv.resize(canvas, (w, h))
-            canvas = draw_point_history(canvas, point_history)
+            canvas = drawing(canvas, point_history)
             final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
         else: 
