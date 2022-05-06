@@ -2,3 +2,6 @@
 env/
 venv/
 
+model/compressed_image_stylization.tar.gz
+model/image_stylization/*
+
