@@ -3,6 +3,9 @@ import mediapipe as mp
 import numpy as np
 import math
 import os
+from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
+
+bg_image = cv2.imread("ostrich.jpg")
 
 # def replace_background(fg, bg):
 #     # bg_image = cv2.imread("sloth.jpg")
@@ -54,23 +57,22 @@ def replace_background(fg, bg):
     #         model_selection=1)
     selfie_segmentation = mp_selfie_segmentation.SelfieSegmentation()
 
-
     RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     # get the result
     results = selfie_segmentation.process(RGB)
-    print
-    cv2.imshow("results", results)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # print
+    # cv2.imshow("results", results)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     # extract segmented mask
-    
+
     mask = results.segmentation_mask
     mask = cv2.GaussianBlur(mask, (33, 33), 0)
     # return mask
 
     # it returns true or false where the condition applies in the mask
     condition = np.stack(
-            (mask,) * 3, axis=-1) > 0.6
+        (mask,) * 3, axis=-1) > 0.6
     height, width = frame.shape[:2]
     # resize the background image to the same size of the original frame
     bg_image = cv2.resize(bg_image, (width, height))
@@ -94,13 +96,33 @@ def replace_background(fg, bg):
 
     return output_image
 
-replace_background(fg, bg):
 
+def segment_selfie(fg):
+    frame = fg
 
+    # initialize mediapipe
+    mp_selfie_segmentation = mp.solutions.selfie_segmentation
+    selfie_segmentation = mp_selfie_segmentation.SelfieSegmentation()
 
+    RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = selfie_segmentation.process(RGB)
+    mask = results.segmentation_mask
+    mask = cv2.GaussianBlur(mask, (33, 33), 0)
+    # return mask
 
+    # it returns true or false where the condition applies in the mask
+    condition = np.stack(
+        (mask,) * 3, axis=-1) > 0.6
+    rows, columns = frame.shape[:2]
+    # resize the background image to the same size of the original frame
+    # bg_image = np.zeros((rows, columns,3))
+    # bg_image = cv2.cvtColor(bg_image, cv2.COLOR_BGR2RGB)
+    # global bg_image
+    # bg_image = cv2.resize(bg_image, (columns, rows))
+    output_image = np.where(condition, frame, 0)
+    return mask, output_image
 
-# turn into ostrich    
+# turn into ostrich
     # images = [fg, bg]
     # mp_selfie_segmentation = mp.solutions.selfie_segmentation
     # height, width = fg.shape[:2]
