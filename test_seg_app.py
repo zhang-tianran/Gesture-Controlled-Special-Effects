@@ -28,6 +28,7 @@ placement_point = None
 G_mask = None
 seg_mode = True
 selfie_seg_mode = False
+canvas = None
 
 
 def get_args():
@@ -52,6 +53,59 @@ def get_args():
     return args
 
 
+def place_segmentation(debug_image):
+    if seg_object is not None and pickup_point is not None and placement_point is not None:
+        difference = np.array(placement_point) - np.array(pickup_point)
+        print(difference)
+        shift_y = int(difference[1])  # col
+        shift_x = int(difference[0])  # row
+        if shift_x > 0:
+            start_col = 0
+            end_col = debug_image.shape[1] - shift_x
+            start_col_debug = shift_x
+            end_col_debug = debug_image.shape[1]
+        else:
+            start_col = abs(shift_x)
+            end_col = debug_image.shape[1]
+            start_col_debug = 0
+            end_col_debug = debug_image.shape[1] - abs(shift_x)
+        if shift_y < 0:
+            start_row = abs(shift_y)
+            end_row = debug_image.shape[0]
+            start_row_debug = 0
+            end_row_debug = debug_image.shape[0] - abs(shift_y)
+        else:
+            start_row = 0
+            end_row = debug_image.shape[0] - abs(shift_y)
+            start_row_debug = abs(shift_y)
+            end_row_debug = debug_image.shape[0]
+        base_seg = np.zeros(
+            (debug_image.shape[0], debug_image.shape[1], 3))
+        rel_seg_obj = seg_object[start_row:end_row,
+                                 start_col:end_col, :]
+        base_seg[start_row_debug:end_row_debug,
+                 start_col_debug:end_col_debug, :] = rel_seg_obj
+        print("YO")
+        print(rel_seg_obj.shape)
+        print(G_mask.shape)
+        print(rel_seg_obj.shape)
+        print(debug_image.shape)
+        G_mask_temp = G_mask[start_row:end_row,
+                             start_col:end_col]
+        print("HIIII")
+        print(G_mask.shape)
+        # THIS WAS THE ORIGINAL
+        condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
+        # height, width = output.shape[:2]
+        # resize the background image to the same size of the original frame
+        # bg_image = cv2.resize(bg_image, (width, height))
+        # # this was iffy:
+        debug_image[start_row_debug:end_row_debug,
+                    start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
+                                                                                                     start_col_debug:end_col_debug, :])
+        return debug_image
+
+
 def main():
     # 引数解析 #################################################################
     global G_seg_image
@@ -59,253 +113,253 @@ def main():
     global placement_point
     global pickup_point
     global G_mask
-    args = get_args()
+    global canvas
+    args=get_args()
 
-    cap_device = args.device
-    cap_width = args.width
-    cap_height = args.height
+    cap_device=args.device
+    cap_width=args.width
+    cap_height=args.height
 
-    use_static_image_mode = args.use_static_image_mode
-    min_detection_confidence = args.min_detection_confidence
-    min_tracking_confidence = args.min_tracking_confidence
+    use_static_image_mode=args.use_static_image_mode
+    min_detection_confidence=args.min_detection_confidence
+    min_tracking_confidence=args.min_tracking_confidence
 
-    use_brect = True
+    use_brect=True
 
     # カメラ準備 ###############################################################
-    cap = cv.VideoCapture(cap_device)
+    cap=cv.VideoCapture(cap_device)
     cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
 
     # モデルロード #############################################################
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(
+    mp_hands=mp.solutions.hands
+    hands=mp_hands.Hands(
         static_image_mode=use_static_image_mode,
         max_num_hands=1,
         min_detection_confidence=min_detection_confidence,
         min_tracking_confidence=min_tracking_confidence,
     )
 
-    keypoint_classifier = KeyPointClassifier()
+    keypoint_classifier=KeyPointClassifier()
 
-    point_history_classifier = PointHistoryClassifier()
+    point_history_classifier=PointHistoryClassifier()
 
     # ラベル読み込み ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
               encoding='utf-8-sig') as f:
-        keypoint_classifier_labels = csv.reader(f)
-        keypoint_classifier_labels = [
+        keypoint_classifier_labels=csv.reader(f)
+        keypoint_classifier_labels=[
             row[0] for row in keypoint_classifier_labels
         ]
     with open(
             'model/point_history_classifier/point_history_classifier_label.csv',
             encoding='utf-8-sig') as f:
-        point_history_classifier_labels = csv.reader(f)
-        point_history_classifier_labels = [
+        point_history_classifier_labels=csv.reader(f)
+        point_history_classifier_labels=[
             row[0] for row in point_history_classifier_labels
         ]
 
     # FPS計測モジュール ########################################################
-    cvFpsCalc = CvFpsCalc(buffer_len=10)
+    cvFpsCalc=CvFpsCalc(buffer_len=10)
 
     # 座標履歴 #################################################################
-    history_length = 16
-    point_history = deque(maxlen=history_length)
+    history_length=16
+    point_history=deque(maxlen=history_length)
 
     # フィンガージェスチャー履歴 ################################################
-    finger_gesture_history = deque(maxlen=history_length)
+    finger_gesture_history=deque(maxlen=history_length)
 
     #  ########################################################################
-    mode = 0
-    model = pspnet_50_ADE_20K()
+    mode=0
+    model=pspnet_50_ADE_20K()
 
     while True:
-        fps = cvFpsCalc.get()
+        fps=cvFpsCalc.get()
 
         # キー処理(ESC：終了) #################################################
-        key = cv.waitKey(10)
+        key=cv.waitKey(10)
         if key == 27:  # ESC
             break
-        number, mode = select_mode(key, mode)
+        number, mode=select_mode(key, mode)
 
         # カメラキャプチャ #####################################################
-        ret, image = cap.read()
+        ret, image=cap.read()
         if not ret:
             break
-        image = cv.flip(image, 1)  # ミラー表示
+        image=cv.flip(image, 1)  # ミラー表示
         # if hand_sign_id == 0:
         #     if seg_object is not None:
         #         img = seg_object
         #         cv.imshow(" image", debug_image)
         #         cv.waitKey(0)
         #         cv.destroyAllWindows()
-        debug_image = copy.deepcopy(image)
+        debug_image=copy.deepcopy(image)
 
         # 検出実施 #############################################################
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        image=cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
-        image.flags.writeable = False
-        results = hands.process(image)
-        image.flags.writeable = True
+        image.flags.writeable=False
+        results=hands.process(image)
+        image.flags.writeable=True
 
         #  ####################################################################
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
                 # 外接矩形の計算
-                brect = calc_bounding_rect(debug_image, hand_landmarks)
+                brect=calc_bounding_rect(debug_image, hand_landmarks)
                 # ランドマークの計算
-                landmark_list = calc_landmark_list(debug_image, hand_landmarks)
+                landmark_list=calc_landmark_list(debug_image, hand_landmarks)
 
                 # 相対座標・正規化座標への変換
-                pre_processed_landmark_list = pre_process_landmark(
+                pre_processed_landmark_list=pre_process_landmark(
                     landmark_list)
-                pre_processed_point_history_list = pre_process_point_history(
+                pre_processed_point_history_list=pre_process_point_history(
                     debug_image, point_history)
                 # 学習データ保存
                 logging_csv(number, mode, pre_processed_landmark_list,
                             pre_processed_point_history_list)
 
                 # ハンドサイン分類
-                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                if hand_sign_id == 0:
-                    if seg_object is not None and pickup_point is not None and placement_point is not None:
-                        difference = np.array(
-                            placement_point) - np.array(pickup_point)
-                        print(difference)
-                        shift_y = int(difference[1])  # col
-                        shift_x = int(difference[0])  # row
-                        # shift_x = 50  # col
-                        # shift_y = 50  # row
-                        if shift_x > 0:
-                            start_col = 0
-                            end_col = debug_image.shape[1] - shift_x
-                            start_col_debug = shift_x
-                            end_col_debug = debug_image.shape[1]
-                        else:
-                            start_col = abs(shift_x)
-                            end_col = debug_image.shape[1]
-                            start_col_debug = 0
-                            end_col_debug = debug_image.shape[1] - abs(shift_x)
-                        if shift_y < 0:
-                            start_row = abs(shift_y)
-                            end_row = debug_image.shape[0]
-                            start_row_debug = 0
-                            end_row_debug = debug_image.shape[0] - abs(shift_y)
-                        else:
-                            start_row = 0
-                            end_row = debug_image.shape[0] - abs(shift_y)
-                            start_row_debug = abs(shift_y)
-                            end_row_debug = debug_image.shape[0]
-                        base_seg = np.zeros(
-                            (debug_image.shape[0], debug_image.shape[1], 3))
-                        rel_seg_obj = seg_object[start_row:end_row,
-                                                 start_col:end_col, :]
-                        base_seg[start_row_debug:end_row_debug,
-                                 start_col_debug:end_col_debug, :] = rel_seg_obj
+                hand_sign_id=keypoint_classifier(pre_processed_landmark_list)
+                # if hand_sign_id == 0:
+                #                 if seg_object is not None and pickup_point is not None and placement_point is not None:
+                #                     difference = np.array(
+                #                         placement_point) - np.array(pickup_point)
+                #                     print(difference)
+                #                     shift_y = int(difference[1])  # col
+                #                     shift_x = int(difference[0])  # row
+                #                     # shift_x = 50  # col
+                #                     # shift_y = 50  # row
+                #                     if shift_x > 0:
+                #                         start_col = 0
+                #                         end_col = debug_image.shape[1] - shift_x
+                #                         start_col_debug = shift_x
+                #                         end_col_debug = debug_image.shape[1]
+                #                     else:
+                #                         start_col = abs(shift_x)
+                #                         end_col = debug_image.shape[1]
+                #                         start_col_debug = 0
+                #                         end_col_debug = debug_image.shape[1] - abs(shift_x)
+                #                     if shift_y < 0:
+                #                         start_row = abs(shift_y)
+                #                         end_row = debug_image.shape[0]
+                #                         start_row_debug = 0
+                #                         end_row_debug = debug_image.shape[0] - abs(shift_y)
+                #                     else:
+                #                         start_row = 0
+                #                         end_row = debug_image.shape[0] - abs(shift_y)
+                #                         start_row_debug = abs(shift_y)
+                #                         end_row_debug = debug_image.shape[0]
+                #                     base_seg = np.zeros(
+                #                         (debug_image.shape[0], debug_image.shape[1],3))
+                #                     rel_seg_obj = seg_object[start_row:end_row,
+                #                                              start_col:end_col, :]
+                #                     base_seg[start_row_debug:end_row_debug,
+                #                              start_col_debug:end_col_debug, :] = rel_seg_obj
 
-                        print("YO")
-                        print(rel_seg_obj.shape)
-                        print(G_mask.shape)
-                        print(rel_seg_obj.shape)
-                        print(debug_image.shape)
-                        G_mask_temp = G_mask[start_row:end_row,
-                                             start_col:end_col]
-                        print("HIIII")
-                        print(G_mask.shape)
-                        # THIS WAS THE ORIGINAL
-                        condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
-                        # height, width = output.shape[:2]
-    # resize the background image to the same size of the original frame
-                        # bg_image = cv2.resize(bg_image, (width, height))
+                #                     print("YO")
+                #                     print(rel_seg_obj.shape)
+                #                     print(G_mask.shape)
+                #                     print(rel_seg_obj.shape)
+                #                     print(debug_image.shape)
+                #                     G_mask_temp = G_mask[start_row:end_row,
+                #                                          start_col:end_col]
+                #                     print("HIIII")
+                #                     print(G_mask.shape)
+                #                     condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6 # THIS WAS THE ORIGINAL
+                #                     # height, width = output.shape[:2]
+                # # resize the background image to the same size of the original frame
+                #                     # bg_image = cv2.resize(bg_image, (width, height))
 
-                        # # this was iffy:
-                        debug_image[start_row_debug:end_row_debug,
-                                    start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
-                                                                                                                     start_col_debug:end_col_debug, :])
-                        # debug_image = np.where(condition, base_seg, debug_image)
+                #                     # # this was iffy:
+                #                     debug_image[start_row_debug:end_row_debug,
+                #                                 start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
+                #                                                                                                             start_col_debug:end_col_debug, :])
+                #                     # debug_image = np.where(condition, base_seg, debug_image)
 
-                        # debug_image[start_row_debug:end_row_debug,
-                        #             start_col_debug:end_col_debug, :] = np.where(seg_object == 0, seg_object, )
-                        # base_img[shift_y:debug_image.shape[0]-shift_y,
-                        #          shift_x:debug_image.shape[1]-shift_x, :] = seg_object
-                        # THIS IS GOOOD
-                        # cv.imshow(" image", debug_image)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                        # print(start_row)
-                        # print(end_row)
-                        # print(start_col)
-                        # print(end_col)
-                        # base_img[start_row:end_row,
-                        #          start_col:end_col, :] = seg_object
-                        # cv.imshow(" image", base_img)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                        # # base_img[start_row:end_row,
-                        # #          start_col:end_col, :] = np.where(base_img == 0, debug_image, base_img)
-                        # debug_image = base_img[shift_y:base_img.shape[0]-shift_y,
-                        #                        shift_x:base_img.shape[1]-shift_x, :]
-                        # print("done!")
+                #                     # debug_image[start_row_debug:end_row_debug,
+                #                     #             start_col_debug:end_col_debug, :] = np.where(seg_object == 0, seg_object, )
+                #                     # base_img[shift_y:debug_image.shape[0]-shift_y,
+                #                     #          shift_x:debug_image.shape[1]-shift_x, :] = seg_object
+                #                     # THIS IS GOOOD
+                #                     # cv.imshow(" image", debug_image)
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #                     # print(start_row)
+                #                     # print(end_row)
+                #                     # print(start_col)
+                #                     # print(end_col)
+                #                     # base_img[start_row:end_row,
+                #                     #          start_col:end_col, :] = seg_object
+                #                     # cv.imshow(" image", base_img)
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #                     # # base_img[start_row:end_row,
+                #                     # #          start_col:end_col, :] = np.where(base_img == 0, debug_image, base_img)
+                #                     # debug_image = base_img[shift_y:base_img.shape[0]-shift_y,
+                #                     #                        shift_x:base_img.shape[1]-shift_x, :]
+                #                     # print("done!")
 
-                        # cv.imshow(" image", debug_image)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                        # if shift_x <= 0:
-                        #     start_col = 0
-                        #     end_col = debug_image.shape[1]
-                        # else:
-                        #     start_col = shift_x
-                        #     end_col = shift_x + debug_image.shape[1]
-                        # if shift_y > 0:
-                        #     start_row = 0
-                        #     end_row = debug_image.shape[0]
-                        # else:
-                        #     start_row = shift_y
-                        #     end_row = base_img.shape[0]
-                        # base_img[shift_y:base_img.shape[0]-shift_y,
-                        #          shift_x:base_img.shape[1]-shift_x, 1] = debug_image[:,:,0]
-                        # # base_img[shift_y:debug_image.shape[0]-shift_y,
-                        # #          shift_x:debug_image.shape[1]-shift_x, :] = seg_object
-                        # cv.imshow(" image", debug_image[:, :, 0])
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                        # print(start_row)
-                        # print(end_row)
-                        # print(start_col)
-                        # print(end_col)
-                        # base_img[start_row:end_row,
-                        #          start_col:end_col, :] = seg_object
-                        # cv.imshow(" image", base_img)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                        # # base_img[start_row:end_row,
-                        # #          start_col:end_col, :] = np.where(base_img == 0, debug_image, base_img)
-                        # debug_image = base_img[shift_y:base_img.shape[0]-shift_y,
-                        #                        shift_x:base_img.shape[1]-shift_x, :]
-                        # print("done!")
+                #                     # cv.imshow(" image", debug_image)
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #                     # if shift_x <= 0:
+                #                     #     start_col = 0
+                #                     #     end_col = debug_image.shape[1]
+                #                     # else:
+                #                     #     start_col = shift_x
+                #                     #     end_col = shift_x + debug_image.shape[1]
+                #                     # if shift_y > 0:
+                #                     #     start_row = 0
+                #                     #     end_row = debug_image.shape[0]
+                #                     # else:
+                #                     #     start_row = shift_y
+                #                     #     end_row = base_img.shape[0]
+                #                     # base_img[shift_y:base_img.shape[0]-shift_y,
+                #                     #          shift_x:base_img.shape[1]-shift_x, 1] = debug_image[:,:,0]
+                #                     # # base_img[shift_y:debug_image.shape[0]-shift_y,
+                #                     # #          shift_x:debug_image.shape[1]-shift_x, :] = seg_object
+                #                     # cv.imshow(" image", debug_image[:, :, 0])
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #                     # print(start_row)
+                #                     # print(end_row)
+                #                     # print(start_col)
+                #                     # print(end_col)
+                #                     # base_img[start_row:end_row,
+                #                     #          start_col:end_col, :] = seg_object
+                #                     # cv.imshow(" image", base_img)
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #                     # # base_img[start_row:end_row,
+                #                     # #          start_col:end_col, :] = np.where(base_img == 0, debug_image, base_img)
+                #                     # debug_image = base_img[shift_y:base_img.shape[0]-shift_y,
+                #                     #                        shift_x:base_img.shape[1]-shift_x, :]
+                #                     # print("done!")
 
-                        # cv.imshow(" image", debug_image)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                #     # debug_image = np.resize(debug_image, (473, 473, 3))
-                #     # out = predict(model=model, inp=debug_image)
-                #     # # width, height, _ = debug_image.shape
-                #     # r = out[0, :]
-                #     # b = out[1, :]
-                #     # ret_val = np.zeros((473, 473, 3))
-                #     # out = out/255
-                #     # ret_val[:, :, 0] = out * 2
-                #     # ret_val[:, :, 1] = out
-                #     # debug_image = ret_val
+                #                     # cv.imshow(" image", debug_image)
+                #                     # cv.waitKey(0)
+                #                     # cv.destroyAllWindows()
+                #             #     # debug_image = np.resize(debug_image, (473, 473, 3))
+                #             #     # out = predict(model=model, inp=debug_image)
+                #             #     # # width, height, _ = debug_image.shape
+                #             #     # r = out[0, :]
+                #             #     # b = out[1, :]
+                #             #     # ret_val = np.zeros((473, 473, 3))
+                #             #     # out = out/255
+                #             #     # ret_val[:, :, 0] = out * 2
+                #             #     # ret_val[:, :, 1] = out
+                #             #     # debug_image = ret_val
 
-                #     # # debug_image = replace_background(debug_image, img1)
-                #     # seg_image = segment_image(model, debug_image)
-                #     # debug_image = np.resize(seg_image, debug_image.shape)
+                #             #     # # debug_image = replace_background(debug_image, img1)
+                #             #     # seg_image = segment_image(model, debug_image)
+                #             #     # debug_image = np.resize(seg_image, debug_image.shape)
 
-                # debug_image = segment_image(model, debug_image)
-                # # cv.imshow(" image", debug_image)
-                # # cv.waitKey(0)
-                # # cv.destroyAllWindows()
+                #             # debug_image = segment_image(model, debug_image)
+                #             # # cv.imshow(" image", debug_image)
+                #             # # cv.waitKey(0)
+                #             # # cv.destroyAllWindows()
 
                 if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
@@ -313,30 +367,30 @@ def main():
                     point_history.append([0, 0])
 
                 # フィンガージェスチャー分類
-                finger_gesture_id = 0
-                point_history_len = len(pre_processed_point_history_list)
+                finger_gesture_id=0
+                point_history_len=len(pre_processed_point_history_list)
                 if point_history_len == (history_length * 2):
-                    finger_gesture_id = point_history_classifier(
+                    finger_gesture_id=point_history_classifier(
                         pre_processed_point_history_list)
 
                 # 直近検出の中で最多のジェスチャーIDを算出
                 finger_gesture_history.append(finger_gesture_id)
-                most_common_fg_id = Counter(
+                most_common_fg_id=Counter(
                     finger_gesture_history).most_common()
                 if selfie_seg_mode == True:
                     if hand_sign_id == 1:
                         print("WORKIGN")
                         if G_seg_image is None:
                             # G_seg_image = segment_image(debug_image)
-                            G_mask, G_seg_image = segment_selfie(debug_image)
+                            G_mask, G_seg_image=segment_selfie(debug_image)
                             # cv.imshow(" image", G_seg_image)
                             # cv.waitKey(0)
                             # cv.destroyAllWindows()
                     if hand_sign_id == 2 and G_seg_image is not None and seg_object is None:
                         print(landmark_list[8])
                         print("HIHIHHI")
-                        pickup_point = landmark_list[8]
-                        seg_object = G_seg_image
+                        pickup_point=landmark_list[8]
+                        seg_object=G_seg_image
                         # G_mask, seg_object = get_segmented_object(
                         #     G_seg_image, debug_image, pickup_point)
                         # # cv.imshow(" image", seg_object)
@@ -349,14 +403,14 @@ def main():
                 elif seg_mode == True:
                     if hand_sign_id == 1:
                         if G_seg_image is None:
-                            G_seg_image = segment_image(debug_image)
+                            G_seg_image=segment_image(debug_image)
                             # cv.imshow(" image", G_seg_image)
                             # cv.waitKey(0)
                             # cv.destroyAllWindows()
                     if hand_sign_id == 2 and G_seg_image is not None and seg_object is None:
                         print(landmark_list[8])
-                        pickup_point = landmark_list[8]
-                        G_mask, seg_object = get_segmented_object(
+                        pickup_point=landmark_list[8]
+                        G_mask, seg_object=get_segmented_object(
                             G_seg_image, debug_image, pickup_point)
                         # # cv.imshow(" image", seg_object)
                         # # cv.waitKey(0)
@@ -366,14 +420,24 @@ def main():
                     #     print("PLACE")
                     #     print(landmark_list[8])
                 if hand_sign_id == 2 and G_seg_image is not None and seg_object is not None:
-                    placement_point = landmark_list[8]
+                    placement_point=landmark_list[8]
                     print("PLACE")
                     print(landmark_list[8])
-
+                    debug_image=place_segmentation(debug_image)
+                if hand_sign_id == 0 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                    print("AHHHHHH")
+                    h, w, c=debug_image.shape
+                    if canvas is None:
+                        canvas = np.zeros((1, 1, 3))
+                        canvas=cv.resize(canvas, (w, h))
+                    canvas=place_segmentation(canvas)
+                    # cv.imshow(" image", canvas)
+                    # cv.waitKey(0)
+                    # cv.destroyAllWindows()
                 # 描画
-                debug_image = draw_bounding_rect(use_brect, debug_image, brect)
-                debug_image = draw_landmarks(debug_image, landmark_list)
-                debug_image = draw_info_text(
+                debug_image=draw_bounding_rect(use_brect, debug_image, brect)
+                debug_image=draw_landmarks(debug_image, landmark_list)
+                debug_image=draw_info_text(
                     debug_image,
                     brect,
                     handedness,
@@ -388,8 +452,13 @@ def main():
         else:
             point_history.append([0, 0])
 
-        debug_image = draw_point_history(debug_image, point_history)
-        debug_image = draw_info(debug_image, fps, mode, number)
+        debug_image=draw_point_history(debug_image, point_history)
+        debug_image=draw_info(debug_image, fps, mode, number)
+
+        if seg_mode or selfie_seg_mode:
+            if canvas is not None and seg_object is not None and pickup_point is not None and placement_point is not None:
+                final=cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
+                cv.imshow('Hand Gesture Recognition', final)
 
         # 画面反映 #############################################################
         cv.imshow('Hand Gesture Recognition', debug_image)
@@ -399,45 +468,45 @@ def main():
 
 
 def select_mode(key, mode):
-    number = -1
+    number=-1
     if 48 <= key <= 57:  # 0 ~ 9
-        number = key - 48
+        number=key - 48
     if key == 110:  # n
-        mode = 0
+        mode=0
     if key == 107:  # k
-        mode = 1
+        mode=1
     if key == 104:  # h
-        mode = 2
+        mode=2
     return number, mode
 
 
 def calc_bounding_rect(image, landmarks):
-    image_width, image_height = image.shape[1], image.shape[0]
+    image_width, image_height=image.shape[1], image.shape[0]
 
-    landmark_array = np.empty((0, 2), int)
+    landmark_array=np.empty((0, 2), int)
 
     for _, landmark in enumerate(landmarks.landmark):
-        landmark_x = min(int(landmark.x * image_width), image_width - 1)
-        landmark_y = min(int(landmark.y * image_height), image_height - 1)
+        landmark_x=min(int(landmark.x * image_width), image_width - 1)
+        landmark_y=min(int(landmark.y * image_height), image_height - 1)
 
-        landmark_point = [np.array((landmark_x, landmark_y))]
+        landmark_point=[np.array((landmark_x, landmark_y))]
 
-        landmark_array = np.append(landmark_array, landmark_point, axis=0)
+        landmark_array=np.append(landmark_array, landmark_point, axis=0)
 
-    x, y, w, h = cv.boundingRect(landmark_array)
+    x, y, w, h=cv.boundingRect(landmark_array)
 
     return [x, y, x + w, y + h]
 
 
 def calc_landmark_list(image, landmarks):
-    image_width, image_height = image.shape[1], image.shape[0]
+    image_width, image_height=image.shape[1], image.shape[0]
 
-    landmark_point = []
+    landmark_point=[]
 
     # キーポイント
     for _, landmark in enumerate(landmarks.landmark):
-        landmark_x = min(int(landmark.x * image_width), image_width - 1)
-        landmark_y = min(int(landmark.y * image_height), image_height - 1)
+        landmark_x=min(int(landmark.x * image_width), image_width - 1)
+        landmark_y=min(int(landmark.y * image_height), image_height - 1)
         # landmark_z = landmark.z
 
         landmark_point.append([landmark_x, landmark_y])
@@ -446,50 +515,50 @@ def calc_landmark_list(image, landmarks):
 
 
 def pre_process_landmark(landmark_list):
-    temp_landmark_list = copy.deepcopy(landmark_list)
+    temp_landmark_list=copy.deepcopy(landmark_list)
 
     # 相対座標に変換
-    base_x, base_y = 0, 0
+    base_x, base_y=0, 0
     for index, landmark_point in enumerate(temp_landmark_list):
         if index == 0:
-            base_x, base_y = landmark_point[0], landmark_point[1]
+            base_x, base_y=landmark_point[0], landmark_point[1]
 
-        temp_landmark_list[index][0] = temp_landmark_list[index][0] - base_x
-        temp_landmark_list[index][1] = temp_landmark_list[index][1] - base_y
+        temp_landmark_list[index][0]=temp_landmark_list[index][0] - base_x
+        temp_landmark_list[index][1]=temp_landmark_list[index][1] - base_y
 
     # 1次元リストに変換
-    temp_landmark_list = list(
+    temp_landmark_list=list(
         itertools.chain.from_iterable(temp_landmark_list))
 
     # 正規化
-    max_value = max(list(map(abs, temp_landmark_list)))
+    max_value=max(list(map(abs, temp_landmark_list)))
 
     def normalize_(n):
         return n / max_value
 
-    temp_landmark_list = list(map(normalize_, temp_landmark_list))
+    temp_landmark_list=list(map(normalize_, temp_landmark_list))
 
     return temp_landmark_list
 
 
 def pre_process_point_history(image, point_history):
-    image_width, image_height = image.shape[1], image.shape[0]
+    image_width, image_height=image.shape[1], image.shape[0]
 
-    temp_point_history = copy.deepcopy(point_history)
+    temp_point_history=copy.deepcopy(point_history)
 
     # 相対座標に変換
-    base_x, base_y = 0, 0
+    base_x, base_y=0, 0
     for index, point in enumerate(temp_point_history):
         if index == 0:
-            base_x, base_y = point[0], point[1]
+            base_x, base_y=point[0], point[1]
 
-        temp_point_history[index][0] = (temp_point_history[index][0] -
+        temp_point_history[index][0]=(temp_point_history[index][0] -
                                         base_x) / image_width
-        temp_point_history[index][1] = (temp_point_history[index][1] -
+        temp_point_history[index][1]=(temp_point_history[index][1] -
                                         base_y) / image_height
 
     # 1次元リストに変換
-    temp_point_history = list(
+    temp_point_history=list(
         itertools.chain.from_iterable(temp_point_history))
 
     return temp_point_history
@@ -499,14 +568,14 @@ def logging_csv(number, mode, landmark_list, point_history_list):
     if mode == 0:
         pass
     if mode == 1 and (0 <= number <= 9):
-        csv_path = 'model/keypoint_classifier/keypoint.csv'
+        csv_path='model/keypoint_classifier/keypoint.csv'
         with open(csv_path, 'a', newline="") as f:
-            writer = csv.writer(f)
+            writer=csv.writer(f)
             writer.writerow([number, *landmark_list])
     if mode == 2 and (0 <= number <= 9):
-        csv_path = 'model/point_history_classifier/point_history.csv'
+        csv_path='model/point_history_classifier/point_history.csv'
         with open(csv_path, 'a', newline="") as f:
-            writer = csv.writer(f)
+            writer=csv.writer(f)
             writer.writerow([number, *point_history_list])
     return
 
@@ -714,9 +783,9 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
     cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22),
                  (0, 0, 0), -1)
 
-    info_text = handedness.classification[0].label[0:]
+    info_text=handedness.classification[0].label[0:]
     if hand_sign_text != "":
-        info_text = info_text + ':' + hand_sign_text
+        info_text=info_text + ':' + hand_sign_text
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
 
@@ -745,7 +814,7 @@ def draw_info(image, fps, mode, number):
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
                1.0, (255, 255, 255), 2, cv.LINE_AA)
 
-    mode_string = ['Logging Key Point', 'Logging Point History']
+    mode_string=['Logging Key Point', 'Logging Point History']
     if 1 <= mode <= 2:
         cv.putText(image, "MODE:" + mode_string[mode - 1], (10, 90),
                    cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1,
