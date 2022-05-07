@@ -26,6 +26,8 @@ seg_object = None
 pickup_point = None
 placement_point = None
 G_mask = None
+seg_mode = True
+selfie_seg_mode = False
 
 
 def get_args():
@@ -174,9 +176,6 @@ def main():
                         shift_x = int(difference[0])  # row
                         # shift_x = 50  # col
                         # shift_y = 50  # row
-                        base_img = np.zeros(
-                            (debug_image.shape[0] + 2*shift_y, debug_image.shape[1] + 2*shift_x, 3))
-                        # print(base_img.shape)
                         if shift_x > 0:
                             start_col = 0
                             end_col = debug_image.shape[1] - shift_x
@@ -324,26 +323,48 @@ def main():
                 finger_gesture_history.append(finger_gesture_id)
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
-                if hand_sign_id == 1:
-                    if G_seg_image is None:
-                        # G_seg_image = segment_image(debug_image)
-                        G_mask, G_seg_image = segment_selfie(debug_image)
-                        # cv.imshow(" image", G_seg_image)
-                        # cv.waitKey(0)
-                        # cv.destroyAllWindows()
-                if hand_sign_id == 2 and G_seg_image is not None and seg_object is None:
-                    print(landmark_list[8])
-                    pickup_point = landmark_list[8]
-                    seg_object = G_seg_image
-                    # G_mask, seg_object = get_segmented_object(
-                    #     G_seg_image, debug_image, pickup_point)
-                    # # cv.imshow(" image", seg_object)
-                    # # cv.waitKey(0)
-                    # # cv.destroyAllWindows()
-                # if hand_sign_id == 2 and G_seg_image is not None and seg_object is not None and placement_point is None:
-                #     placement_point = landmark_list[8]
-                #     print("PLACE")
-                #     print(landmark_list[8])
+                if selfie_seg_mode == True:
+                    if hand_sign_id == 1:
+                        print("WORKIGN")
+                        if G_seg_image is None:
+                            # G_seg_image = segment_image(debug_image)
+                            G_mask, G_seg_image = segment_selfie(debug_image)
+                            # cv.imshow(" image", G_seg_image)
+                            # cv.waitKey(0)
+                            # cv.destroyAllWindows()
+                    if hand_sign_id == 2 and G_seg_image is not None and seg_object is None:
+                        print(landmark_list[8])
+                        print("HIHIHHI")
+                        pickup_point = landmark_list[8]
+                        seg_object = G_seg_image
+                        # G_mask, seg_object = get_segmented_object(
+                        #     G_seg_image, debug_image, pickup_point)
+                        # # cv.imshow(" image", seg_object)
+                        # # cv.waitKey(0)
+                        # # cv.destroyAllWindows()
+                    # if hand_sign_id == 2 and G_seg_image is not None and seg_object is not None and placement_point is None:
+                    #     placement_point = landmark_list[8]
+                    #     print("PLACE")
+                    #     print(landmark_list[8])
+                elif seg_mode == True:
+                    if hand_sign_id == 1:
+                        if G_seg_image is None:
+                            G_seg_image = segment_image(debug_image)
+                            # cv.imshow(" image", G_seg_image)
+                            # cv.waitKey(0)
+                            # cv.destroyAllWindows()
+                    if hand_sign_id == 2 and G_seg_image is not None and seg_object is None:
+                        print(landmark_list[8])
+                        pickup_point = landmark_list[8]
+                        G_mask, seg_object = get_segmented_object(
+                            G_seg_image, debug_image, pickup_point)
+                        # # cv.imshow(" image", seg_object)
+                        # # cv.waitKey(0)
+                        # # cv.destroyAllWindows()
+                    # if hand_sign_id == 2 and G_seg_image is not None and seg_object is not None and placement_point is None:
+                    #     placement_point = landmark_list[8]
+                    #     print("PLACE")
+                    #     print(landmark_list[8])
                 if hand_sign_id == 2 and G_seg_image is not None and seg_object is not None:
                     placement_point = landmark_list[8]
                     print("PLACE")

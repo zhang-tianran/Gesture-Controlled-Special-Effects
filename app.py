@@ -96,6 +96,7 @@ def main():
     cartoon_mode = False
     drawing_mode = False
     tunnel_mode = False
+    segmentation_mode = False
 
     use_brect = True
 
