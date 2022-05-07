@@ -86,6 +86,9 @@ def stylization_popup(stylization_model, frame, style_image):
     hello = np.asarray(hello[0][0])
     cv.imshow("hello", hello)
 
+def impressionism_popup(frame, rainy_mode):
+    frame = run_impressionistic_filter(frame, rainy_mode)
+    cv.imshow("frame", frame)
 
 def main():
 
@@ -224,9 +227,9 @@ def main():
                 elif (hand_sign_id == 2): # ghibli stylization
                     stylization_popup(stylization_model, debug_image, style_image_og)
                 elif (hand_sign_id == 3): # point art stylization
-                    debug_image = run_impressionistic_filter(debug_image, False)
+                    impressionism_popup(debug_image, False)
                 elif (hand_sign_id == 4): # rainy day stylization
-                    debug_image = run_impressionistic_filter(debug_image, True)
+                    impressionism_popup(debug_image, True)
                 
 
 
