@@ -2,19 +2,16 @@
 # -*- coding: utf-8 -*-
 import csv
 import copy
-import argparse
 from collections import Counter
 from collections import deque
 
 from skimage import img_as_float32
 
-#  import pyautogui
 
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
 
-from KazuhitoTakahashiUtils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
@@ -40,10 +37,11 @@ selfie_seg_mode = True
 
 selection_modes = {
     "select": 0,
-    "tunnel": 1,
+    "drawing": 1,
     "effect": 2,
     "segmentation": 3,
     "panoroma": 4,
+    "tunnel": 5,
 }
 
 
@@ -210,14 +208,8 @@ def place_segmentation(debug_image):
 
 def main():
 
-    in_selection_mode = False
-    current_mode = 0
+    in_mode = False
 
-    panorama_mode = False
-    cartoon_mode = False
-    drawing_mode = False
-    tunnel_mode = False
-    segmentation_mode = False
     global G_seg_image
     global seg_object
     global placement_point
@@ -226,7 +218,6 @@ def main():
     global selfie_seg_mode
     global seg_mode
     # global canvas
-
 
     use_brect = True
 
@@ -274,9 +265,6 @@ def main():
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
 
-    # FPS calculation ########################################################
-    cvFpsCalc = CvFpsCalc(buffer_len=10)
-
     # point & gesture history generation #################################################################
     history_length = 16
     point_history = deque(maxlen=history_length)
@@ -290,7 +278,6 @@ def main():
 
     while True:
         display_text = ""
-        fps = cvFpsCalc.get()
         frame_num += 1
 
         # exit the program #################################################
@@ -336,6 +323,10 @@ def main():
 
                 if (hand_sign_id == 6):
                     hand_sign_id = 0
+                if hand_sign_id == 1:
+                    point_history.append(landmark_list[8])
+                else:
+                    point_history.append([0, 0])
 
                 #  print("hand_sign_id: ", hand_sign_id)
 
@@ -348,6 +339,7 @@ def main():
 
                 #  print(frame_num)
                 if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
+                    in_mode = False
                     selection_mode = hand_sign_id
                 elif (hand_sign_id == 0):
                     if (frame_num % 50 < 12):
@@ -367,7 +359,6 @@ def main():
                             cv.destroyWindow("impressionism")
                         except Exception as e:
                             raise e
-
                 else:
                     if selection_mode == selection_modes["tunnel"]:
                         debug_image = tunnel_effect(
@@ -418,6 +409,16 @@ def main():
                                 pickup_point = landmark_list[8]
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
+                    elif selection_mode == selection_modes["drawing"]:
+                        h, w, c = debug_image.shape
+                        if hand_sign_id == 5: 
+                            canvas = np.zeros((h, w, c))
+                        else: 
+                            in_mode = True
+                            canvas = cv.resize(canvas, (w, h))
+                            canvas = drawing(canvas, point_history)
+
+
                         # if hand_sign_id == 3:
                         #     selfie_seg_mode = True
                         #     seg_mode = False
@@ -449,27 +450,7 @@ def main():
                         if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             print("AHHHHHH")
                             debug_image = place_segmentation(debug_image)
-                        
-
-                #  print("in_selection_mode? ", in_selection_mode)
-                #  print("current_mode: ", current_mode)
-                #  print("hand_sign_id: ", hand_sign_id)
-
-                #  if (hand_sign_id == 1): # cartoon
-                #      debug_image = cartoon_effect(debug_image, color_change=False)
-                #  elif (hand_sign_id == 2): # ghibli stylization
-                #      stylization_popup(stylization_model, debug_image, style_image_og)
-                #  elif (hand_sign_id == 3): # point art stylization
-                #  elif (hand_sign_id == 4): # avatar blue skin mode
-
-                #  print("in_selection_mode? ", in_selection_mode)
-                print("selection_mode: ", selection_mode)
-                print("hand_sign_id: ", hand_sign_id)
-
-                if hand_sign_id == 2:
-                    point_history.append(landmark_list[8])
-                else:
-                    point_history.append([0, 0])
+        
 
                 # gesture classification
                 finger_gesture_id = 0
@@ -496,19 +477,14 @@ def main():
         else:
             point_history.append([0, 0])
 
-        debug_image = draw_info(debug_image, fps, mode, number)
         display_text = display_selection_mode(selection_mode, display_text)
         add_text(debug_image, display_text)
 
         # show image #############################################################
-        if drawing_mode:
-            h, w, c = debug_image.shape
-            canvas = cv.resize(canvas, (w, h))
-            canvas = drawing(canvas, point_history)
-            final = cv.addWeighted(canvas.astype(
-                'uint8'), 1, debug_image, 1, 0)
+        if (in_mode): 
+            final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
-        else:
+        else: 
             cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
