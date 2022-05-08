@@ -7,7 +7,6 @@ from collections import deque
 
 from skimage import img_as_float32
 
-
 import cv2 as cv
 import numpy as np
 import mediapipe as mp
@@ -18,8 +17,6 @@ from model import PointHistoryClassifier
 from KazuhitoTakahashiUtils.helpers import *
 from selfie_segmentation import replace_background, segment_selfie
 from gen_segmentation import segment_image, get_segmented_object
-# from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
-# from keras_segmentation.predict import predict
 
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -33,7 +30,6 @@ placement_point = None
 G_mask = None
 seg_mode = False
 selfie_seg_mode = True
-
 
 selection_modes = {
     "select": 0,
@@ -327,17 +323,6 @@ def main():
                     point_history.append(landmark_list[8])
                 else:
                     point_history.append([0, 0])
-
-                #  print("hand_sign_id: ", hand_sign_id)
-
-                #  if (hand_sign_id == 0):
-                #      view_start += view_shift_speed
-                #      pyautogui.scroll(-5)
-                #  elif (hand_sign_id == 1):
-                #      view_start -= view_shift_speed
-                #      pyautogui.scroll(5)
-
-                #  print(frame_num)
                 if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
                     in_mode = False
                     selection_mode = hand_sign_id
@@ -388,15 +373,6 @@ def main():
                                                     view_start:view_start+view_width]
                         cv.imshow('panorama-view', panorama_in_view)
                     elif selection_mode == selection_modes["segmentation"]:
-                        # if hand_sign_id == 3 and selfie_seg_mode == True:
-                        #     if G_seg_image is None:
-                        #         G_mask, G_seg_image = segment_selfie(
-                        #             debug_image)
-                        # if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and selfie_seg_mode == True:
-                        #     print(landmark_list[8])
-                        #     print("HIHIHHI")
-                        #     pickup_point = landmark_list[8]
-                        #     seg_object = G_seg_image
                         if hand_sign_id == 2:
                             if G_seg_image is None:
                                 G_mask, G_seg_image = segment_selfie(
@@ -418,30 +394,6 @@ def main():
                             canvas = cv.resize(canvas, (w, h))
                             canvas = drawing(canvas, point_history)
 
-
-                        # if hand_sign_id == 3:
-                        #     selfie_seg_mode = True
-                        #     seg_mode = False
-                        #     if hand_sign_id == 3 and selfie_seg_mode == True:
-                        #         if G_seg_image is None:
-                        #             G_mask, G_seg_image = segment_selfie(
-                        #                 debug_image)
-                        #     if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and selfie_seg_mode == True:
-                        #         print(landmark_list[8])
-                        #         print("HIHIHHI")
-                        #         pickup_point = landmark_list[8]
-                        #         seg_object = G_seg_image
-                        # if hand_sign_id == 4:
-                        #     selfie_seg_mode = False
-                        #     seg_mode = True
-                        #     if hand_sign_id == 3 and seg_mode == True:
-                        #         if G_seg_image is None:
-                        #             G_seg_image = segment_image(debug_image)
-                        #     if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and seg_mode == True:
-                        #         print(landmark_list[8])
-                        #         pickup_point = landmark_list[8]
-                        #         G_mask, seg_object = get_segmented_object(
-                        #             G_seg_image, debug_image, pickup_point)
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
                             placement_point = landmark_list[8]
                             print("PLACE")
