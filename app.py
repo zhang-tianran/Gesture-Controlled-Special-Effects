@@ -25,8 +25,12 @@ import tensorflow_hub as hub
 
 from point_art import *
 
-def cartoon_effect(frame): 
+def cartoon_effect(frame, color_change): 
     # prepare color
+
+    if color_change:
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+
     img_color = cv.pyrDown(cv.pyrDown(frame))
     for _ in range(3):
         img_color = cv.bilateralFilter(img_color, 9, 9, 7)
@@ -85,9 +89,9 @@ def stylization_popup(stylization_model, frame, style_image):
     hello = np.asarray(hello[0][0])
     cv.imshow("hello", hello)
 
-def impressionism_popup(frame, rainy_mode):
-    frame = run_impressionistic_filter(frame, rainy_mode)
-    cv.imshow("frame", frame)
+def impressionism_popup(frame):
+    impressionism = run_impressionistic_filter(frame, False)
+    cv.imshow("impressionism", impressionism)
 
 def main():
 
@@ -220,15 +224,13 @@ def main():
                 #  print("hand_sign_id: ", hand_sign_id)
 
                 if (hand_sign_id == 1): # cartoon
-                    debug_image = cartoon_effect(debug_image)
+                    debug_image = cartoon_effect(debug_image, color_change=False)
                 elif (hand_sign_id == 2): # ghibli stylization
                     stylization_popup(stylization_model, debug_image, style_image_og)
                 elif (hand_sign_id == 3): # point art stylization
-                    impressionism_popup(debug_image, False)
-                elif (hand_sign_id == 4): # rainy day stylization
-                    impressionism_popup(debug_image, True)
-                
-
+                    impressionism_popup(debug_image)
+                elif (hand_sign_id == 4): # avatar blue skin mode
+                    debug_image = cartoon_effect(debug_image, color_change=True)
 
                 print("in_selection_mode? ", in_selection_mode)
                 print("current_mode: ", current_mode)
