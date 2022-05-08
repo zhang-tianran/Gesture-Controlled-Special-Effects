@@ -37,7 +37,7 @@ def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
     for a_key in selection_modes: 
         if (selection_mode == selection_modes["effect"]): 
-            display_text += "1. ghibli\n2. cartoon\n3. point art\n4. rainy day\n"
+            display_text += "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
             break
 
         elif selection_mode == selection_modes[a_key]: 
@@ -289,7 +289,7 @@ def main():
                             debug_image = cartoon_effect(debug_image, False)
                         elif (hand_sign_id == 3): # point art stylization
                             impressionism_popup(debug_image)
-                        elif (hand_sign_id == 4): # rainy day stylization
+                        elif (hand_sign_id == 4): # avatar blue skin
                             debug_image = cartoon_effect(debug_image, color_change=True)
                     elif selection_mode == selection_modes["panoroma"]: 
                         if hand_sign_id == 2: 
