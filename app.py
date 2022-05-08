@@ -30,7 +30,7 @@ selection_modes = {
         "select": 0, 
         "tunnel": 1, 
         "effect": 2, 
-        "panaroma": 3, 
+        "panoroma": 3, 
         }
 
 def display_selection_mode(selection_mode, display_text): 
@@ -129,7 +129,7 @@ def stylization_popup(stylization_model, frame, style_image):
 
     hello = stylization_model(temp_debug_image, style_image)
     hello = np.asarray(hello[0][0])
-    cv.imshow("hello", hello)
+    cv.imshow("stylization", hello)
 
 def impressionism_popup(frame):
     impressionism = run_impressionistic_filter(frame, False)
@@ -159,11 +159,13 @@ def main():
         min_tracking_confidence=0.5,
     )
 
-    if (panorama_mode): 
-        panorama = cv.imread('panorama.png')
-        view_start = 0
-        view_shift_speed = 1000
-        #  view_shift_speed = 400
+    #  if (panorama_mode): 
+    panorama = cv.imread('assets/panorama.png')
+    view_start = 0
+    view_shift_speed = 1000
+    view_width = 5000
+    panorama_height, panorama_width, _ = panorama.shape
+    #  view_shift_speed = 400
 
     keypoint_classifier = KeyPointClassifier()
     point_history_classifier = PointHistoryClassifier()
@@ -247,6 +249,9 @@ def main():
                             pre_processed_point_history_list)
 
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+                if (hand_sign_id == 0): 
+                    hand_sign_id = -1
+
                 if (hand_sign_id == 6): 
                     hand_sign_id = 0
 
@@ -260,13 +265,20 @@ def main():
                 #      pyautogui.scroll(5)
 
                 
-                print(frame_num)
+                #  print(frame_num)
                 if (selection_mode == selection_modes["select"] and hand_sign_id != 0): 
                     selection_mode = hand_sign_id
                 elif (hand_sign_id == 0): 
                     if (frame_num % 50 < 12): 
                         display_text += "Entered selection mode!\nChoose a mode\n"
                         selection_mode = selection_modes["select"]
+                        try:
+                            cv.destroyWindow("panorama-view")
+                            cv.destroyWindow("stylization")
+                            cv.destroyWindow("impressionism")
+                        except Exception as e:
+                            raise e
+
                 else: 
                     if selection_mode == selection_modes["tunnel"]: 
                         debug_image = tunnel_effect(debug_image, landmark_list[9])
@@ -276,16 +288,20 @@ def main():
                         elif (hand_sign_id == 2): # cartoon
                             debug_image = cartoon_effect(debug_image, False)
                         elif (hand_sign_id == 3): # point art stylization
-                            impressionism_popup(debug_image, False)
+                            impressionism_popup(debug_image)
                         elif (hand_sign_id == 4): # rainy day stylization
-                            impressionism_popup(debug_image, True)
-                    elif selection_mode == selection_modes["panaroma"]: 
+                            debug_image = cartoon_effect(debug_image, color_change=True)
+                    elif selection_mode == selection_modes["panoroma"]: 
                         if hand_sign_id == 2: 
-                            if landmark_list[8][0] > point_history[-1][0]: 
+                            if (landmark_list[8][0] > point_history[-3][0]): 
+                                print("right")
                                 view_start += view_shift_speed
                             else: 
+                                print("left")
                                 view_start -= view_shift_speed
-
+                            view_start = min(max(0, view_start), panorama_width - view_width)
+                        panorama_in_view = panorama[:,view_start:view_start+view_width]
+                        cv.imshow('panorama-view', panorama_in_view)
 
                 
                 
@@ -299,12 +315,10 @@ def main():
                 #  elif (hand_sign_id == 2): # ghibli stylization
                 #      stylization_popup(stylization_model, debug_image, style_image_og)
                 #  elif (hand_sign_id == 3): # point art stylization
-                #      impressionism_popup(debug_image)
                 #  elif (hand_sign_id == 4): # avatar blue skin mode
-                #      debug_image = cartoon_effect(debug_image, color_change=True)
 
-                print("in_selection_mode? ", in_selection_mode)
-                print("current_mode: ", current_mode)
+                #  print("in_selection_mode? ", in_selection_mode)
+                print("selection_mode: ", selection_mode)
                 print("hand_sign_id: ", hand_sign_id)
 
                 if hand_sign_id == 2:  
@@ -343,12 +357,7 @@ def main():
 
 
         # show image #############################################################
-        if panorama_mode: 
-            view_width = 5000
-            view_start = max(0, view_start)
-            panorama_in_view = panorama[:,view_start:view_start+view_width]
-            cv.imshow('Hand Gesture Recognition', panorama_in_view)
-        elif drawing_mode: 
+        if drawing_mode: 
             h, w, c = debug_image.shape
             canvas = cv.resize(canvas, (w, h))
             canvas = drawing(canvas, point_history)
