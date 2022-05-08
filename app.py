@@ -40,7 +40,6 @@ selection_modes = {
     "tunnel": 5,
 }
 
-
 def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
     for a_key in selection_modes:
@@ -62,8 +61,8 @@ def add_text(frame, text):
     font = cv.FONT_HERSHEY_SIMPLEX
     pos = (100, 200)
     org = (50, 50)
-    fontScale = 2
-    color = (255, 0, 0)
+    fontScale = 1
+    color = (255, 255, 255)
     thickness = 2
 
     y0, dy = 240, 80
@@ -78,7 +77,6 @@ def add_text(frame, text):
 
 def cartoon_effect(frame, color_change):
     # prepare color
-
     if color_change:
         frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
 
@@ -120,7 +118,6 @@ def tunnel_effect(image, landmark):
     out = cv.remap(image, map1=xymap, map2=None, interpolation=cv.INTER_LINEAR)
     return out
 
-
 def drawing(image, point_history):
     pre = None
     for index, point in enumerate(point_history):
@@ -132,7 +129,6 @@ def drawing(image, point_history):
                 pre = point
     return image
 
-
 def stylization_popup(stylization_model, frame, style_image):
     temp_debug_image = frame
     temp_debug_image = tf.expand_dims(temp_debug_image, 0)
@@ -143,11 +139,9 @@ def stylization_popup(stylization_model, frame, style_image):
     hello = np.asarray(hello[0][0])
     cv.imshow("stylization", hello)
 
-
 def impressionism_popup(frame):
     impressionism = run_impressionistic_filter(frame, False)
     cv.imshow("impressionism", impressionism)
-
 
 def place_segmentation(debug_image):
     if seg_object is not None and pickup_point is not None and placement_point is not None:
@@ -175,27 +169,21 @@ def place_segmentation(debug_image):
             end_row = debug_image.shape[0] - abs(shift_y)
             start_row_debug = abs(shift_y)
             end_row_debug = debug_image.shape[0]
+
         base_seg = np.zeros(
             (debug_image.shape[0], debug_image.shape[1], 3))
         rel_seg_obj = seg_object[start_row:end_row,
                                  start_col:end_col, :]
         base_seg[start_row_debug:end_row_debug,
                  start_col_debug:end_col_debug, :] = rel_seg_obj
-        print("YO")
-        print(rel_seg_obj.shape)
-        print(G_mask.shape)
-        print(rel_seg_obj.shape)
-        print(debug_image.shape)
-        G_mask_temp = G_mask[start_row:end_row,
-                             start_col:end_col]
-        print("HIIII")
-        print(G_mask.shape)
-        # THIS WAS THE ORIGINAL
+        G_mask_temp = G_mask[start_row:end_row, start_col:end_col]
+
+
         condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
         # height, width = output.shape[:2]
         # resize the background image to the same size of the original frame
         # bg_image = cv2.resize(bg_image, (width, height))
-        # # this was iffy:
+
         debug_image[start_row_debug:end_row_debug,
                     start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
                                                                                                      start_col_debug:end_col_debug, :])
@@ -213,9 +201,6 @@ def main():
     global G_mask
     global selfie_seg_mode
     global seg_mode
-    # global canvas
-
-    use_brect = True
 
     # camera preparation ###############################################################
     cap = cv.VideoCapture(0)
@@ -228,13 +213,11 @@ def main():
         min_tracking_confidence=0.5,
     )
 
-    #  if (panorama_mode):
     panorama = cv.imread('assets/panorama.png')
     view_start = 0
     view_shift_speed = 1000
     view_width = 5000
     panorama_height, panorama_width, _ = panorama.shape
-    #  view_shift_speed = 400
 
     keypoint_classifier = KeyPointClassifier()
     point_history_classifier = PointHistoryClassifier()
@@ -300,8 +283,6 @@ def main():
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
-                # 外接矩形の計算
-                brect = calc_bounding_rect(debug_image, hand_landmarks)
                 # ランドマークの計算
                 landmark_list = calc_landmark_list(debug_image, hand_landmarks)
 
@@ -316,13 +297,11 @@ def main():
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 if (hand_sign_id == 0):
                     hand_sign_id = -1
-
-                if (hand_sign_id == 6):
+                elif (hand_sign_id == 6):
                     hand_sign_id = 0
-                if hand_sign_id == 1:
+                elif (hand_sign_id == 1):
                     point_history.append(landmark_list[8])
-                else:
-                    point_history.append([0, 0])
+
                 if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
                     in_mode = False
                     selection_mode = hand_sign_id
@@ -338,6 +317,7 @@ def main():
                         G_mask = None
                         seg_mode = False
                         selfie_seg_mode = True
+                        in_mode = False
                         try:
                             cv.destroyWindow("panorama-view")
                             cv.destroyWindow("stylization")
@@ -403,7 +383,6 @@ def main():
                             print("AHHHHHH")
                             debug_image = place_segmentation(debug_image)
         
-
                 # gesture classification
                 finger_gesture_id = 0
                 point_history_len = len(pre_processed_point_history_list)
@@ -411,21 +390,21 @@ def main():
                     finger_gesture_id = point_history_classifier(
                         pre_processed_point_history_list)
 
-                # 直近検出の中で最多のジェスチャーIDを算出
-                finger_gesture_history.append(finger_gesture_id)
-                most_common_fg_id = Counter(
-                    finger_gesture_history).most_common()
+                # # 直近検出の中で最多のジェスチャーIDを算出
+                # finger_gesture_history.append(finger_gesture_id)
+                # most_common_fg_id = Counter(
+                #     finger_gesture_history).most_common()
 
-                # generate information
-                debug_image = draw_bounding_rect(use_brect, debug_image, brect)
-                debug_image = draw_landmarks(debug_image, landmark_list)
-                debug_image = draw_info_text(
-                    debug_image,
-                    brect,
-                    handedness,
-                    keypoint_classifier_labels[hand_sign_id],
-                    point_history_classifier_labels[most_common_fg_id[0][0]],
-                )
+                # # generate information
+                # debug_image = draw_bounding_rect(use_brect, debug_image, brect)
+                # debug_image = draw_landmarks(debug_image, landmark_list)
+                # debug_image = draw_info_text(
+                #     debug_image,
+                #     brect,
+                #     handedness,
+                #     keypoint_classifier_labels[hand_sign_id],
+                #     point_history_classifier_labels[most_common_fg_id[0][0]],
+                # )
         else:
             point_history.append([0, 0])
 
