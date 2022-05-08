@@ -19,37 +19,52 @@ from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
 from KazuhitoTakahashiUtils.helpers import *
+from selfie_segmentation import replace_background, segment_selfie
+from gen_segmentation import segment_image, get_segmented_object
+# from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
+# from keras_segmentation.predict import predict
 
 import tensorflow as tf
 import tensorflow_hub as hub
 
 from point_art import *
 
+G_seg_image = None
+seg_object = None
+pickup_point = None
+placement_point = None
+G_mask = None
+seg_mode = False
+selfie_seg_mode = True
+
 
 selection_modes = {
-        "select": 0, 
-        "tunnel": 1, 
-        "effect": 2, 
-        "panoroma": 3, 
-        }
+    "select": 0,
+    "tunnel": 1,
+    "effect": 2,
+    "segmentation": 3,
+    "panoroma": 4,
+}
 
-def display_selection_mode(selection_mode, display_text): 
+
+def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
-    for a_key in selection_modes: 
-        if (selection_mode == selection_modes["effect"]): 
+    for a_key in selection_modes:
+        if (selection_mode == selection_modes["effect"]):
             display_text += "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
             break
 
-        elif selection_mode == selection_modes[a_key]: 
+        elif selection_mode == selection_modes[a_key]:
             display_text += (a_key + "\n")
             selection_mode_found = True
             break
-    if not selection_mode_found: 
+    if not selection_mode_found:
         display_text += "Selection mode not found\n"
 
     return display_text
 
-def add_text(frame, text): 
+
+def add_text(frame, text):
     font = cv.FONT_HERSHEY_SIMPLEX
     pos = (100, 200)
     org = (50, 50)
@@ -57,17 +72,17 @@ def add_text(frame, text):
     color = (255, 0, 0)
     thickness = 2
 
-
     y0, dy = 240, 80
     for i, line in enumerate(text.split('\n')):
         y = y0 + i*dy
-        cv.putText(frame, line, (50, y ), font, fontScale, color, thickness)
+        cv.putText(frame, line, (50, y), font, fontScale, color, thickness)
 
-    #  cv.putText(frame, text, pos, font, 
+    #  cv.putText(frame, text, pos, font,
     #                 fontScale, color, thickness, cv.LINE_AA)
     return frame
 
-def cartoon_effect(frame, color_change): 
+
+def cartoon_effect(frame, color_change):
     # prepare color
 
     if color_change:
@@ -90,13 +105,14 @@ def cartoon_effect(frame, color_change):
     frame = cv.bitwise_and(img_color, img_edges)
     return frame
 
-def tunnel_effect(image, landmark): 
-    (h,w) = image.shape[:2]
+
+def tunnel_effect(image, landmark):
+    (h, w) = image.shape[:2]
     center = np.array([landmark[0], landmark[1]])
     radius = h / 2.5
 
-    i,j = np.mgrid[0:h, 0:w]
-    xymap = np.dstack([j,i]).astype(np.float32) # "identity" map
+    i, j = np.mgrid[0:h, 0:w]
+    xymap = np.dstack([j, i]).astype(np.float32)  # "identity" map
 
     # coordinates relative to center
     coords = (xymap - center)
@@ -105,10 +121,11 @@ def tunnel_effect(image, landmark):
     # touch only what's outside of the circle
     mask = (dist >= radius)
     # project onto circle (calculate unit vectors, move onto circle, then back to top-left origin)
-    xymap[mask] = coords[mask] / dist[mask,None] * radius + center
+    xymap[mask] = coords[mask] / dist[mask, None] * radius + center
 
     out = cv.remap(image, map1=xymap, map2=None, interpolation=cv.INTER_LINEAR)
     return out
+
 
 def drawing(image, point_history):
     pre = None
@@ -116,12 +133,13 @@ def drawing(image, point_history):
         if point[0] != 0 and point[1] != 0:
             if pre == None:
                 pre = point
-            else: 
+            else:
                 cv.line(image, pre, point, (200, 140, 30), 2)
                 pre = point
     return image
 
-def stylization_popup(stylization_model, frame, style_image): 
+
+def stylization_popup(stylization_model, frame, style_image):
     temp_debug_image = frame
     temp_debug_image = tf.expand_dims(temp_debug_image, 0)
     temp_debug_image = img_as_float32(temp_debug_image)
@@ -131,9 +149,64 @@ def stylization_popup(stylization_model, frame, style_image):
     hello = np.asarray(hello[0][0])
     cv.imshow("stylization", hello)
 
+
 def impressionism_popup(frame):
     impressionism = run_impressionistic_filter(frame, False)
     cv.imshow("impressionism", impressionism)
+
+
+def place_segmentation(debug_image):
+    if seg_object is not None and pickup_point is not None and placement_point is not None:
+        difference = np.array(placement_point) - np.array(pickup_point)
+        print(difference)
+        shift_y = int(difference[1])  # col
+        shift_x = int(difference[0])  # row
+        if shift_x > 0:
+            start_col = 0
+            end_col = debug_image.shape[1] - shift_x
+            start_col_debug = shift_x
+            end_col_debug = debug_image.shape[1]
+        else:
+            start_col = abs(shift_x)
+            end_col = debug_image.shape[1]
+            start_col_debug = 0
+            end_col_debug = debug_image.shape[1] - abs(shift_x)
+        if shift_y < 0:
+            start_row = abs(shift_y)
+            end_row = debug_image.shape[0]
+            start_row_debug = 0
+            end_row_debug = debug_image.shape[0] - abs(shift_y)
+        else:
+            start_row = 0
+            end_row = debug_image.shape[0] - abs(shift_y)
+            start_row_debug = abs(shift_y)
+            end_row_debug = debug_image.shape[0]
+        base_seg = np.zeros(
+            (debug_image.shape[0], debug_image.shape[1], 3))
+        rel_seg_obj = seg_object[start_row:end_row,
+                                 start_col:end_col, :]
+        base_seg[start_row_debug:end_row_debug,
+                 start_col_debug:end_col_debug, :] = rel_seg_obj
+        print("YO")
+        print(rel_seg_obj.shape)
+        print(G_mask.shape)
+        print(rel_seg_obj.shape)
+        print(debug_image.shape)
+        G_mask_temp = G_mask[start_row:end_row,
+                             start_col:end_col]
+        print("HIIII")
+        print(G_mask.shape)
+        # THIS WAS THE ORIGINAL
+        condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
+        # height, width = output.shape[:2]
+        # resize the background image to the same size of the original frame
+        # bg_image = cv2.resize(bg_image, (width, height))
+        # # this was iffy:
+        debug_image[start_row_debug:end_row_debug,
+                    start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
+                                                                                                     start_col_debug:end_col_debug, :])
+        return debug_image
+
 
 def main():
 
@@ -145,6 +218,15 @@ def main():
     drawing_mode = False
     tunnel_mode = False
     segmentation_mode = False
+    global G_seg_image
+    global seg_object
+    global placement_point
+    global pickup_point
+    global G_mask
+    global selfie_seg_mode
+    global seg_mode
+    # global canvas
+
 
     use_brect = True
 
@@ -159,7 +241,7 @@ def main():
         min_tracking_confidence=0.5,
     )
 
-    #  if (panorama_mode): 
+    #  if (panorama_mode):
     panorama = cv.imread('assets/panorama.png')
     view_start = 0
     view_shift_speed = 1000
@@ -187,7 +269,8 @@ def main():
         ]
 
     stylization_model = hub.load("model/image_stylization")
-    style_image_og = cv.cvtColor(cv.imread("assets/ghibli-style.png"), cv.COLOR_BGR2RGB)
+    style_image_og = cv.cvtColor(
+        cv.imread("assets/ghibli-style.png"), cv.COLOR_BGR2RGB)
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
 
@@ -220,9 +303,8 @@ def main():
         ret, image = cap.read()
         if not ret:
             break
-        image = cv.flip(image, 1) 
+        image = cv.flip(image, 1)
         debug_image = copy.deepcopy(image)
-
 
         # check output #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -249,29 +331,36 @@ def main():
                             pre_processed_point_history_list)
 
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                if (hand_sign_id == 0): 
+                if (hand_sign_id == 0):
                     hand_sign_id = -1
 
-                if (hand_sign_id == 6): 
+                if (hand_sign_id == 6):
                     hand_sign_id = 0
 
                 #  print("hand_sign_id: ", hand_sign_id)
 
-                #  if (hand_sign_id == 0): 
+                #  if (hand_sign_id == 0):
                 #      view_start += view_shift_speed
                 #      pyautogui.scroll(-5)
-                #  elif (hand_sign_id == 1): 
+                #  elif (hand_sign_id == 1):
                 #      view_start -= view_shift_speed
                 #      pyautogui.scroll(5)
 
-                
                 #  print(frame_num)
-                if (selection_mode == selection_modes["select"] and hand_sign_id != 0): 
+                if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
                     selection_mode = hand_sign_id
-                elif (hand_sign_id == 0): 
-                    if (frame_num % 50 < 12): 
+                elif (hand_sign_id == 0):
+                    if (frame_num % 50 < 12):
+                        # clear
                         display_text += "Entered selection mode!\nChoose a mode\n"
                         selection_mode = selection_modes["select"]
+                        G_seg_image = None
+                        seg_object = None
+                        pickup_point = None
+                        placement_point = None
+                        G_mask = None
+                        seg_mode = False
+                        selfie_seg_mode = True
                         try:
                             cv.destroyWindow("panorama-view")
                             cv.destroyWindow("stylization")
@@ -279,32 +368,88 @@ def main():
                         except Exception as e:
                             raise e
 
-                else: 
-                    if selection_mode == selection_modes["tunnel"]: 
-                        debug_image = tunnel_effect(debug_image, landmark_list[9])
-                    elif selection_mode == selection_modes["effect"]: 
-                        if (hand_sign_id == 1): # ghibli stylization
-                            stylization_popup(stylization_model, debug_image, style_image_og)
-                        elif (hand_sign_id == 2): # cartoon
+                else:
+                    if selection_mode == selection_modes["tunnel"]:
+                        debug_image = tunnel_effect(
+                            debug_image, landmark_list[9])
+                    elif selection_mode == selection_modes["effect"]:
+                        if (hand_sign_id == 1):  # ghibli stylization
+                            stylization_popup(
+                                stylization_model, debug_image, style_image_og)
+                        elif (hand_sign_id == 2):  # cartoon
                             debug_image = cartoon_effect(debug_image, False)
-                        elif (hand_sign_id == 3): # point art stylization
+                        elif (hand_sign_id == 3):  # point art stylization
                             impressionism_popup(debug_image)
-                        elif (hand_sign_id == 4): # avatar blue skin
-                            debug_image = cartoon_effect(debug_image, color_change=True)
-                    elif selection_mode == selection_modes["panoroma"]: 
-                        if hand_sign_id == 2: 
-                            if (landmark_list[8][0] > point_history[-3][0]): 
+                        elif (hand_sign_id == 4):  # avatar blue skin
+                            debug_image = cartoon_effect(
+                                debug_image, color_change=True)
+                    elif selection_mode == selection_modes["panoroma"]:
+                        if hand_sign_id == 2:
+                            if (landmark_list[8][0] > point_history[-3][0]):
                                 print("right")
                                 view_start += view_shift_speed
-                            else: 
+                            else:
                                 print("left")
                                 view_start -= view_shift_speed
-                            view_start = min(max(0, view_start), panorama_width - view_width)
-                        panorama_in_view = panorama[:,view_start:view_start+view_width]
+                            view_start = min(
+                                max(0, view_start), panorama_width - view_width)
+                        panorama_in_view = panorama[:,
+                                                    view_start:view_start+view_width]
                         cv.imshow('panorama-view', panorama_in_view)
-
-                
-                
+                    elif selection_mode == selection_modes["segmentation"]:
+                        # if hand_sign_id == 3 and selfie_seg_mode == True:
+                        #     if G_seg_image is None:
+                        #         G_mask, G_seg_image = segment_selfie(
+                        #             debug_image)
+                        # if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and selfie_seg_mode == True:
+                        #     print(landmark_list[8])
+                        #     print("HIHIHHI")
+                        #     pickup_point = landmark_list[8]
+                        #     seg_object = G_seg_image
+                        if hand_sign_id == 2:
+                            if G_seg_image is None:
+                                G_mask, G_seg_image = segment_selfie(
+                                    debug_image)
+                                pickup_point = landmark_list[8]
+                                seg_object = G_seg_image
+                        if hand_sign_id == 4:
+                            if G_seg_image is None:
+                                G_seg_image = segment_image(debug_image)
+                                pickup_point = landmark_list[8]
+                                G_mask, seg_object = get_segmented_object(
+                                    G_seg_image, debug_image, pickup_point)
+                        # if hand_sign_id == 3:
+                        #     selfie_seg_mode = True
+                        #     seg_mode = False
+                        #     if hand_sign_id == 3 and selfie_seg_mode == True:
+                        #         if G_seg_image is None:
+                        #             G_mask, G_seg_image = segment_selfie(
+                        #                 debug_image)
+                        #     if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and selfie_seg_mode == True:
+                        #         print(landmark_list[8])
+                        #         print("HIHIHHI")
+                        #         pickup_point = landmark_list[8]
+                        #         seg_object = G_seg_image
+                        # if hand_sign_id == 4:
+                        #     selfie_seg_mode = False
+                        #     seg_mode = True
+                        #     if hand_sign_id == 3 and seg_mode == True:
+                        #         if G_seg_image is None:
+                        #             G_seg_image = segment_image(debug_image)
+                        #     if hand_sign_id == 1 and G_seg_image is not None and seg_object is None and seg_mode == True:
+                        #         print(landmark_list[8])
+                        #         pickup_point = landmark_list[8]
+                        #         G_mask, seg_object = get_segmented_object(
+                        #             G_seg_image, debug_image, pickup_point)
+                        if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
+                            placement_point = landmark_list[8]
+                            print("PLACE")
+                            print(landmark_list[8])
+                            debug_image = place_segmentation(debug_image)
+                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                            print("AHHHHHH")
+                            debug_image = place_segmentation(debug_image)
+                        
 
                 #  print("in_selection_mode? ", in_selection_mode)
                 #  print("current_mode: ", current_mode)
@@ -321,7 +466,7 @@ def main():
                 print("selection_mode: ", selection_mode)
                 print("hand_sign_id: ", hand_sign_id)
 
-                if hand_sign_id == 2:  
+                if hand_sign_id == 2:
                     point_history.append(landmark_list[8])
                 else:
                     point_history.append([0, 0])
@@ -355,15 +500,15 @@ def main():
         display_text = display_selection_mode(selection_mode, display_text)
         add_text(debug_image, display_text)
 
-
         # show image #############################################################
-        if drawing_mode: 
+        if drawing_mode:
             h, w, c = debug_image.shape
             canvas = cv.resize(canvas, (w, h))
             canvas = drawing(canvas, point_history)
-            final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
+            final = cv.addWeighted(canvas.astype(
+                'uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
-        else: 
+        else:
             cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
@@ -372,4 +517,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -3,79 +3,85 @@ import numpy as np
 import cv2
 from keras_segmentation.models.unet import vgg_unet
 from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
+
+model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
+
+# load the pretrained model trained on Cityscapes dataset
+
+
 model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
 
 # THIS WORKS FOR TESTING
 
 
-def segment_image_orig(model, img):
-    out = model.predict_segmentation(
-        inp=img
-    )
-    dim = (img.shape[1], img.shape[0])
-    # print(dim)
-    ret_val = out.astype('uint8')
-    ret_val = cv2.resize(ret_val, dim, interpolation=cv2.INTER_AREA)
-    ret_val_color = ret_val
-    print(ret_val.shape)
-    print(img.shape)
-    hsv = cv2.applyColorMap(ret_val, cv2.COLORMAP_HSV)
-    # Convert BGR to HSV
-    # hsv = cv2.cvtColor(ret_val_color, cv2.COLOR_BGR2HSV)
-    color = np.array(hsv[200, 200, :])
+# def segment_image_orig(model, img):
+#     out = model.predict_segmentation(
+#         inp=img
+#     )
+#     dim = (img.shape[1], img.shape[0])
+#     # print(dim)
+#     ret_val = out.astype('uint8')
+#     ret_val = cv2.resize(ret_val, dim, interpolation=cv2.INTER_AREA)
+#     ret_val_color = ret_val
+#     print(ret_val.shape)
+#     print(img.shape)
+#     hsv = cv2.applyColorMap(ret_val, cv2.COLORMAP_HSV)
+#     # Convert BGR to HSV
+#     # hsv = cv2.cvtColor(ret_val_color, cv2.COLOR_BGR2HSV)
+#     color = np.array(hsv[200, 200, :])
 
-    # # define blue color range
-    # light_blue = np.array([110, 50, 50])
-    # dark_blue = np.array([130, 255, 255])
+#     # # define blue color range
+#     # light_blue = np.array([110, 50, 50])
+#     # dark_blue = np.array([130, 255, 255])
 
-    # Threshold the HSV image to get only blue colors
-    mask = cv2.inRange(hsv, color, color)
+#     # Threshold the HSV image to get only blue colors
+#     mask = cv2.inRange(hsv, color, color)
 
-    # Bitwise-AND mask and original image
-    output = cv2.bitwise_and(img, img, mask=mask)
+#     # Bitwise-AND mask and original image
+#     output = cv2.bitwise_and(img, img, mask=mask)
 
-    cv2.imshow("Color Detected", np.hstack((hsv, output)))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # filt_image = np.where(ret_val_color == color, img, 0)
+#     cv2.imshow("Color Detected", np.hstack((hsv, output)))
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+#     # filt_image = np.where(ret_val_color == color, img, 0)
 
-    cv2.imshow("out", hsv)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # cv2.imshow("out", filt_image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    #=-----------------------------------------
-    # RGB = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
-    # # get the result
-    # results = selfie_segmentation.process(RGB)
+#     cv2.imshow("out", hsv)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+#     # cv2.imshow("out", filt_image)
+#     # cv2.waitKey(0)
+#     # cv2.destroyAllWindows()
+#     #=-----------------------------------------
+#     # RGB = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
+#     # # get the result
+#     # results = selfie_segmentation.process(RGB)
 
-    # mask = results.segmentation_mask
-    # mask = cv2.GaussianBlur(mask, (33, 33), 0)
+#     # mask = results.segmentation_mask
+#     # mask = cv2.GaussianBlur(mask, (33, 33), 0)
 
-    # it returns true or false where the condition applies in the mask
-    bg_image = cv2.imread("ostrich.jpg")
-    condition = np.stack(
-        (mask,) * 3, axis=-1) > 0.1
-    height, width = output.shape[:2]
-    # resize the background image to the same size of the original frame
-    bg_image = cv2.resize(bg_image, (width, height))
-    # bg_image = cv2.cvtColor(bg_image, cv2.COLOR_BGR2RGB)
-    # output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
-    # bg_image = cv2.GaussianBlur(bg_image, (55, 55), 0)
-    # combine frame and background image using the condition
-    output_image = np.where(condition, output, bg_image)
-    # height, width = frame.shape[:2]
-    # resize the background image to the same size of the original frame
-    # bg_image = cv2.resize(bg_image, (width, height))
-    # bg_image = cv2.GaussianBlur(bg_image, (55, 55), 0)
-    # combine frame and background image using the condition
+#     # it returns true or false where the condition applies in the mask
+#     bg_image = cv2.imread("ostrich.jpg")
+#     condition = np.stack(
+#         (mask,) * 3, axis=-1) > 0.1
+#     height, width = output.shape[:2]
+#     # resize the background image to the same size of the original frame
+#     bg_image = cv2.resize(bg_image, (width, height))
+#     # bg_image = cv2.cvtColor(bg_image, cv2.COLOR_BGR2RGB)
+#     # output = cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
+#     # bg_image = cv2.GaussianBlur(bg_image, (55, 55), 0)
+#     # combine frame and background image using the condition
+#     output_image = np.where(condition, output, bg_image)
+#     # height, width = frame.shape[:2]
+#     # resize the background image to the same size of the original frame
+#     # bg_image = cv2.resize(bg_image, (width, height))
+#     # bg_image = cv2.GaussianBlur(bg_image, (55, 55), 0)
+#     # combine frame and background image using the condition
 
-    cv2.imshow("out", output_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+#     cv2.imshow("out", output_image)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
 
-    return ret_val
+#     return ret_val
 
 # THIS WORKS FOR TESTING
 

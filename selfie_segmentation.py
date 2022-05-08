@@ -5,7 +5,7 @@ import math
 import os
 from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
 
-bg_image = cv2.imread("ostrich.jpg")
+# bg_image = cv2.imread("ostrich.jpg")
 
 # def replace_background(fg, bg):
 #     # bg_image = cv2.imread("sloth.jpg")
