@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import csv
@@ -68,8 +67,12 @@ def add_text(frame, text):
     #                 fontScale, color, thickness, cv.LINE_AA)
     return frame
 
-def cartoon_effect(frame): 
+def cartoon_effect(frame, color_change): 
     # prepare color
+
+    if color_change:
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+
     img_color = cv.pyrDown(cv.pyrDown(frame))
     for _ in range(3):
         img_color = cv.bilateralFilter(img_color, 9, 9, 7)
@@ -128,9 +131,9 @@ def stylization_popup(stylization_model, frame, style_image):
     hello = np.asarray(hello[0][0])
     cv.imshow("hello", hello)
 
-def impressionism_popup(frame, rainy_mode):
-    frame = run_impressionistic_filter(frame, rainy_mode)
-    cv.imshow("frame", frame)
+def impressionism_popup(frame):
+    impressionism = run_impressionistic_filter(frame, False)
+    cv.imshow("impressionism", impressionism)
 
 def main():
 
@@ -145,7 +148,7 @@ def main():
 
     use_brect = True
 
-    # カメラ準備 ###############################################################
+    # camera preparation ###############################################################
     cap = cv.VideoCapture(0)
 
     mp_hands = mp.solutions.hands
@@ -166,7 +169,7 @@ def main():
     point_history_classifier = PointHistoryClassifier()
     canvas = np.zeros((1, 1, 3))
 
-    # ラベル読み込み ###########################################################
+    # read models ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
               encoding='utf-8-sig') as f:
         keypoint_classifier_labels = csv.reader(f)
@@ -186,14 +189,12 @@ def main():
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
 
-    # FPS計測モジュール ########################################################
+    # FPS calculation ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
 
-    # 座標履歴 #################################################################
+    # point & gesture history generation #################################################################
     history_length = 16
     point_history = deque(maxlen=history_length)
-
-    # フィンガージェスチャー履歴 ################################################
     finger_gesture_history = deque(maxlen=history_length)
 
     #  ########################################################################
@@ -207,21 +208,21 @@ def main():
         fps = cvFpsCalc.get()
         frame_num += 1
 
-        # キー処理(ESC：終了) #################################################
+        # exit the program #################################################
         key = cv.waitKey(10)
         if key == 27:  # ESC
             break
         number, mode = select_mode(key, mode)
 
-        # カメラキャプチャ #####################################################
+        # capture image #####################################################
         ret, image = cap.read()
         if not ret:
             break
-        image = cv.flip(image, 1)  # ミラー表示
+        image = cv.flip(image, 1) 
         debug_image = copy.deepcopy(image)
 
 
-        # 検出実施 #############################################################
+        # check output #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
         image.flags.writeable = False
@@ -273,7 +274,7 @@ def main():
                         if (hand_sign_id == 1): # ghibli stylization
                             stylization_popup(stylization_model, debug_image, style_image_og)
                         elif (hand_sign_id == 2): # cartoon
-                            debug_image = cartoon_effect(debug_image)
+                            debug_image = cartoon_effect(debug_image, False)
                         elif (hand_sign_id == 3): # point art stylization
                             impressionism_popup(debug_image, False)
                         elif (hand_sign_id == 4): # rainy day stylization
@@ -293,19 +294,25 @@ def main():
                 #  print("current_mode: ", current_mode)
                 #  print("hand_sign_id: ", hand_sign_id)
 
-                
-
+                #  if (hand_sign_id == 1): # cartoon
+                #      debug_image = cartoon_effect(debug_image, color_change=False)
+                #  elif (hand_sign_id == 2): # ghibli stylization
+                #      stylization_popup(stylization_model, debug_image, style_image_og)
+                #  elif (hand_sign_id == 3): # point art stylization
+                #      impressionism_popup(debug_image)
+                #  elif (hand_sign_id == 4): # avatar blue skin mode
+                #      debug_image = cartoon_effect(debug_image, color_change=True)
 
                 print("in_selection_mode? ", in_selection_mode)
                 print("current_mode: ", current_mode)
                 print("hand_sign_id: ", hand_sign_id)
 
-                if hand_sign_id == 2:  # 指差しサイン
-                    point_history.append(landmark_list[8])  # 人差指座標
+                if hand_sign_id == 2:  
+                    point_history.append(landmark_list[8])
                 else:
                     point_history.append([0, 0])
 
-                # フィンガージェスチャー分類
+                # gesture classification
                 finger_gesture_id = 0
                 point_history_len = len(pre_processed_point_history_list)
                 if point_history_len == (history_length * 2):
@@ -317,7 +324,7 @@ def main():
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
 
-                # 描画
+                # generate information
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
                 debug_image = draw_info_text(
@@ -334,6 +341,8 @@ def main():
         display_text = display_selection_mode(selection_mode, display_text)
         add_text(debug_image, display_text)
 
+
+        # show image #############################################################
         if panorama_mode: 
             view_width = 5000
             view_start = max(0, view_start)
@@ -346,7 +355,6 @@ def main():
             final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
         else: 
-            # 画面反映 #############################################################
             cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
