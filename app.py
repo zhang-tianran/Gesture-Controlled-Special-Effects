@@ -21,8 +21,6 @@ from model import PointHistoryClassifier
 from KazuhitoTakahashiUtils.helpers import *
 from selfie_segmentation import replace_background, segment_selfie
 from gen_segmentation import segment_image, get_segmented_object
-# from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
-# from keras_segmentation.predict import predict
 
 import tensorflow as tf
 import tensorflow_hub as hub

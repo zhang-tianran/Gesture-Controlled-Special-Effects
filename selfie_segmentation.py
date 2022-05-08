@@ -3,7 +3,6 @@ import mediapipe as mp
 import numpy as np
 import math
 import os
-from keras_segmentation.pretrained import pspnet_50_ADE_20K, pspnet_101_cityscapes, pspnet_101_voc12
 
 
 def replace_background(fg, bg):
@@ -18,7 +17,6 @@ def replace_background(fg, bg):
 
     mask = results.segmentation_mask
     mask = cv2.GaussianBlur(mask, (33, 33), 0)
-    # return mask
 
     # it returns true or false where the condition applies in the mask
     condition = np.stack(
@@ -42,12 +40,10 @@ def segment_selfie(fg):
     results = selfie_segmentation.process(RGB)
     mask = results.segmentation_mask
     mask = cv2.GaussianBlur(mask, (33, 33), 0)
-    # return mask
 
     # it returns true or false where the condition applies in the mask
     condition = np.stack(
         (mask,) * 3, axis=-1) > 0.6
-    rows, columns = frame.shape[:2]
     output_image = np.where(condition, frame, 0)
     return mask, output_image
 
