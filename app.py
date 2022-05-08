@@ -26,6 +26,48 @@ import tensorflow_hub as hub
 
 from point_art import *
 
+
+selection_modes = {
+        "select": 0, 
+        "tunnel": 1, 
+        "effect": 2, 
+        "panaroma": 3, 
+        }
+
+def display_selection_mode(selection_mode, display_text): 
+    selection_mode_found = False
+    for a_key in selection_modes: 
+        if (selection_mode == selection_modes["effect"]): 
+            display_text += "1. ghibli\n2. cartoon\n3. point art\n4. rainy day\n"
+            break
+
+        elif selection_mode == selection_modes[a_key]: 
+            display_text += (a_key + "\n")
+            selection_mode_found = True
+            break
+    if not selection_mode_found: 
+        display_text += "Selection mode not found\n"
+
+    return display_text
+
+def add_text(frame, text): 
+    font = cv.FONT_HERSHEY_SIMPLEX
+    pos = (100, 200)
+    org = (50, 50)
+    fontScale = 2
+    color = (255, 0, 0)
+    thickness = 2
+
+
+    y0, dy = 240, 80
+    for i, line in enumerate(text.split('\n')):
+        y = y0 + i*dy
+        cv.putText(frame, line, (50, y ), font, fontScale, color, thickness)
+
+    #  cv.putText(frame, text, pos, font, 
+    #                 fontScale, color, thickness, cv.LINE_AA)
+    return frame
+
 def cartoon_effect(frame): 
     # prepare color
     img_color = cv.pyrDown(cv.pyrDown(frame))
@@ -157,8 +199,13 @@ def main():
     #  ########################################################################
     mode = 0
 
+    selection_mode = selection_modes["select"]
+    frame_num = 0
+
     while True:
+        display_text = ""
         fps = cvFpsCalc.get()
+        frame_num += 1
 
         # キー処理(ESC：終了) #################################################
         key = cv.waitKey(10)
@@ -199,6 +246,9 @@ def main():
                             pre_processed_point_history_list)
 
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+                if (hand_sign_id == 6): 
+                    hand_sign_id = 0
+
                 #  print("hand_sign_id: ", hand_sign_id)
 
                 #  if (hand_sign_id == 0): 
@@ -208,28 +258,41 @@ def main():
                 #      view_start -= view_shift_speed
                 #      pyautogui.scroll(5)
 
-                if (tunnel_mode): 
-                    debug_image = tunnel_effect(debug_image, landmark_list[9])
                 
-                if panorama_mode and hand_sign_id == 2: 
-                    if landmark_list[8][0] > point_history[-1][0]: 
-                        view_start += view_shift_speed
-                    else: 
-                        view_start -= view_shift_speed
+                print(frame_num)
+                if (selection_mode == selection_modes["select"] and hand_sign_id != 0): 
+                    selection_mode = hand_sign_id
+                elif (hand_sign_id == 0): 
+                    if (frame_num % 50 < 12): 
+                        display_text += "Entered selection mode!\nChoose a mode\n"
+                        selection_mode = selection_modes["select"]
+                else: 
+                    if selection_mode == selection_modes["tunnel"]: 
+                        debug_image = tunnel_effect(debug_image, landmark_list[9])
+                    elif selection_mode == selection_modes["effect"]: 
+                        if (hand_sign_id == 1): # ghibli stylization
+                            stylization_popup(stylization_model, debug_image, style_image_og)
+                        elif (hand_sign_id == 2): # cartoon
+                            debug_image = cartoon_effect(debug_image)
+                        elif (hand_sign_id == 3): # point art stylization
+                            impressionism_popup(debug_image, False)
+                        elif (hand_sign_id == 4): # rainy day stylization
+                            impressionism_popup(debug_image, True)
+                    elif selection_mode == selection_modes["panaroma"]: 
+                        if hand_sign_id == 2: 
+                            if landmark_list[8][0] > point_history[-1][0]: 
+                                view_start += view_shift_speed
+                            else: 
+                                view_start -= view_shift_speed
+
+
+                
                 
 
                 #  print("in_selection_mode? ", in_selection_mode)
                 #  print("current_mode: ", current_mode)
                 #  print("hand_sign_id: ", hand_sign_id)
 
-                if (hand_sign_id == 1): # cartoon
-                    debug_image = cartoon_effect(debug_image)
-                elif (hand_sign_id == 2): # ghibli stylization
-                    stylization_popup(stylization_model, debug_image, style_image_og)
-                elif (hand_sign_id == 3): # point art stylization
-                    impressionism_popup(debug_image, False)
-                elif (hand_sign_id == 4): # rainy day stylization
-                    impressionism_popup(debug_image, True)
                 
 
 
@@ -268,6 +331,8 @@ def main():
             point_history.append([0, 0])
 
         debug_image = draw_info(debug_image, fps, mode, number)
+        display_text = display_selection_mode(selection_mode, display_text)
+        add_text(debug_image, display_text)
 
         if panorama_mode: 
             view_width = 5000
