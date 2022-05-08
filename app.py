@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import csv
@@ -103,7 +102,7 @@ def main():
 
     use_brect = True
 
-    # カメラ準備 ###############################################################
+    # camera preparation ###############################################################
     cap = cv.VideoCapture(0)
 
     mp_hands = mp.solutions.hands
@@ -124,7 +123,7 @@ def main():
     point_history_classifier = PointHistoryClassifier()
     canvas = np.zeros((1, 1, 3))
 
-    # ラベル読み込み ###########################################################
+    # read models ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
               encoding='utf-8-sig') as f:
         keypoint_classifier_labels = csv.reader(f)
@@ -144,14 +143,12 @@ def main():
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
 
-    # FPS計測モジュール ########################################################
+    # FPS calculation ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
 
-    # 座標履歴 #################################################################
+    # point & gesture history generation #################################################################
     history_length = 16
     point_history = deque(maxlen=history_length)
-
-    # フィンガージェスチャー履歴 ################################################
     finger_gesture_history = deque(maxlen=history_length)
 
     #  ########################################################################
@@ -160,21 +157,21 @@ def main():
     while True:
         fps = cvFpsCalc.get()
 
-        # キー処理(ESC：終了) #################################################
+        # exit the program #################################################
         key = cv.waitKey(10)
         if key == 27:  # ESC
             break
         number, mode = select_mode(key, mode)
 
-        # カメラキャプチャ #####################################################
+        # capture image #####################################################
         ret, image = cap.read()
         if not ret:
             break
-        image = cv.flip(image, 1)  # ミラー表示
+        image = cv.flip(image, 1) 
         debug_image = copy.deepcopy(image)
 
 
-        # 検出実施 #############################################################
+        # check output #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
         image.flags.writeable = False
@@ -237,12 +234,12 @@ def main():
                 print("current_mode: ", current_mode)
                 print("hand_sign_id: ", hand_sign_id)
 
-                if hand_sign_id == 2:  # 指差しサイン
-                    point_history.append(landmark_list[8])  # 人差指座標
+                if hand_sign_id == 2:  
+                    point_history.append(landmark_list[8])
                 else:
                     point_history.append([0, 0])
 
-                # フィンガージェスチャー分類
+                # gesture classification
                 finger_gesture_id = 0
                 point_history_len = len(pre_processed_point_history_list)
                 if point_history_len == (history_length * 2):
@@ -254,7 +251,7 @@ def main():
                 most_common_fg_id = Counter(
                     finger_gesture_history).most_common()
 
-                # 描画
+                # generate information
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
                 debug_image = draw_info_text(
@@ -269,6 +266,8 @@ def main():
 
         debug_image = draw_info(debug_image, fps, mode, number)
 
+
+        # show image #############################################################
         if panorama_mode: 
             view_width = 5000
             view_start = max(0, view_start)
@@ -281,7 +280,6 @@ def main():
             final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
         else: 
-            # 画面反映 #############################################################
             cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
