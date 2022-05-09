@@ -156,15 +156,8 @@ def main():
         min_tracking_confidence=0.5,
     )
 
-    panorama = cv.imread('assets/panorama.png')
-    view_start = 0
-    view_shift_speed = 1000
-    view_width = 5000
-    panorama_height, panorama_width, _ = panorama.shape
-
     keypoint_classifier = KeyPointClassifier()
     point_history_classifier = PointHistoryClassifier()
-    canvas = np.zeros((1, 1, 3))
 
     # read models ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
@@ -181,11 +174,20 @@ def main():
             row[0] for row in point_history_classifier_labels
         ]
 
+    # modes setup ###########################################################
     stylization_model = hub.load("model/image_stylization")
     style_image_og = cv.cvtColor(
         cv.imread("assets/ghibli-style.png"), cv.COLOR_BGR2RGB)
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
+
+    panorama = cv.imread('assets/panorama.png')
+    view_start = 0
+    view_shift_speed = 1000
+    view_width = 5000
+    panorama_height, panorama_width, _ = panorama.shape
+
+    canvas = np.zeros((1, 1, 3))
 
     # point & gesture history generation #################################################################
     history_length = 16
@@ -222,7 +224,7 @@ def main():
         results = hands.process(image)
         image.flags.writeable = True
 
-        #  ####################################################################
+        # recoginization ####################################################################
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
@@ -245,6 +247,7 @@ def main():
                 elif (hand_sign_id == 1):
                     point_history.append(landmark_list[8])
 
+                # mode selection ####################################################################
                 if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
                     in_mode = False
                     selection_mode = hand_sign_id
@@ -269,6 +272,7 @@ def main():
                             raise e
                     else: 
                         display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel"
+                # Entering modes
                 else:
                     if selection_mode == selection_modes["tunnel"]:
                         debug_image = tunnel_effect(
@@ -308,6 +312,11 @@ def main():
                                 pickup_point = landmark_list[8]
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
+                        if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
+                            placement_point = landmark_list[8]
+                            debug_image = place_segmentation(debug_image)
+                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                            debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
                         display_text += "Clear the canvas with 5!"
                         h, w, c = debug_image.shape
@@ -317,14 +326,8 @@ def main():
                             in_mode = True
                             canvas = cv.resize(canvas, (w, h))
                             canvas = drawing(canvas, point_history)
-
-                        if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
-                            placement_point = landmark_list[8]
-                            debug_image = place_segmentation(debug_image)
-                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
-                            debug_image = place_segmentation(debug_image)
         
-                # gesture classification
+                # gesture classification ####################################################################
                 finger_gesture_id = 0
                 point_history_len = len(pre_processed_point_history_list)
                 if point_history_len == (history_length * 2):
@@ -347,10 +350,11 @@ def main():
         else:
             point_history.append([0, 0])
 
+        # add text
         display_text = display_selection_mode(selection_mode, display_text)
         add_text(debug_image, display_text)
 
-        # show image #############################################################
+        # show image
         if (in_mode): 
             final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
