@@ -44,10 +44,12 @@ def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
     for a_key in selection_modes:
         if (selection_mode == selection_modes["effect"]):
-            display_text += "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
+            text = "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
+            display_text = text + display_text
             break
         elif selection_mode == selection_modes[a_key]:
-            display_text += (a_key + "\n")
+            text = a_key + "\n"
+            display_text = text + display_text
             selection_mode_found = True
             break
     if not selection_mode_found:
@@ -318,7 +320,7 @@ def main():
                         if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
-                        display_text += "Clear the canvas with 5!"
+                        display_text += "Clear the canvas with 5!\n"
                         h, w, c = debug_image.shape
                         if hand_sign_id == 5: 
                             canvas = np.zeros((h, w, c))
