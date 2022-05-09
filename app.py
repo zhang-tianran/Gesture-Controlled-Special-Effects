@@ -43,7 +43,10 @@ selection_modes = {
 def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
     for a_key in selection_modes:
-        if (selection_mode == selection_modes["effect"]):
+        if (selection_mode == selection_modes["select"]): 
+            display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel\n"
+            break
+        elif (selection_mode == selection_modes["effect"]):
             text = "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
             display_text = text + display_text
             break
@@ -277,8 +280,6 @@ def main():
                             cv.destroyWindow("impressionism")
                         except Exception as e:
                             raise e
-                    else: 
-                        display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel"
                 # Entering modes
                 else:
                     if selection_mode == selection_modes["tunnel"]:
