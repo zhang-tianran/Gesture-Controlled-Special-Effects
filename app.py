@@ -15,7 +15,7 @@ from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
 from utils.helpers import *
-from selfie_segmentation import segment_selfie
+from effects.selfie_segmentation import segment_selfie
 from effects.gen_segmentation import segment_image, get_segmented_object
 from effects.point_art import *
 from effects.collect_effects import *
