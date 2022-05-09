@@ -123,7 +123,6 @@ def place_segmentation(debug_image):
                  start_col_debug:end_col_debug, :] = rel_seg_obj
         G_mask_temp = G_mask[start_row:end_row, start_col:end_col]
 
-
         condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
         # height, width = output.shape[:2]
         # resize the background image to the same size of the original frame
@@ -136,8 +135,6 @@ def place_segmentation(debug_image):
 
 
 def main():
-
-    in_mode = False
 
     global G_seg_image
     global seg_object
@@ -190,6 +187,7 @@ def main():
     panorama_height, panorama_width, _ = panorama.shape
 
     canvas = np.zeros((1, 1, 3))
+    in_mode = False
 
     # point & gesture history generation #################################################################
     history_length = 16
@@ -302,22 +300,20 @@ def main():
                                                     view_start:view_start+view_width]
                         cv.imshow('panorama-view', panorama_in_view)
                     elif selection_mode == selection_modes["segmentation"]:
-                        if hand_sign_id == 2:
-                            if G_seg_image is None:
+                        if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
+                            placement_point = landmark_list[8]
+                            debug_image = place_segmentation(debug_image)
+                        elif hand_sign_id == 2 and G_seg_image is None:
                                 G_mask, G_seg_image = segment_selfie(
                                     debug_image)
                                 pickup_point = landmark_list[8]
                                 seg_object = G_seg_image
-                        if hand_sign_id == 4:
-                            if G_seg_image is None:
+                        elif hand_sign_id == 4 and G_seg_image is None:
                                 G_seg_image = segment_image(debug_image)
                                 pickup_point = landmark_list[8]
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
-                        if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
-                            placement_point = landmark_list[8]
-                            debug_image = place_segmentation(debug_image)
-                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                        elif hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
                         display_text += "Clear the canvas with 5!\n"
