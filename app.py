@@ -62,7 +62,7 @@ def add_text(frame, text):
     org = (50, 50)
     fontScale = 1
     color = (255, 255, 255)
-    thickness = 2
+    thickness = 3
 
     y0, dy = 240, 80
     for i, line in enumerate(text.split('\n')):
