@@ -6,7 +6,6 @@ from keras_segmentation.pretrained import model_from_checkpoint_path
 import tensorflow.keras as keras
 
 
-#  model = None
 
 def pspnet_50_ADE_20K(): 
     model_config = {
@@ -26,7 +25,7 @@ model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k datas
 
 
 def get_segmented_object(seg, img, point):
-    color = np.array(seg[point[0], point[1], :])
+    color = np.array(seg[point[1], point[0], :])
 
     # note that you can define a color range
 
