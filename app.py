@@ -46,7 +46,6 @@ def display_selection_mode(selection_mode, display_text):
         if (selection_mode == selection_modes["effect"]):
             display_text += "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
             break
-
         elif selection_mode == selection_modes[a_key]:
             display_text += (a_key + "\n")
             selection_mode_found = True
@@ -80,9 +79,9 @@ def stylization_popup(stylization_model, frame, style_image):
     temp_debug_image = img_as_float32(temp_debug_image)
     temp_debug_image = tf.convert_to_tensor(temp_debug_image)
 
-    hello = stylization_model(temp_debug_image, style_image)
-    hello = np.asarray(hello[0][0])
-    cv.imshow("stylization", hello)
+    img = stylization_model(temp_debug_image, style_image)
+    img = np.asarray(img[0][0])
+    cv.imshow("stylization", img)
 
 def impressionism_popup(frame):
     impressionism = run_impressionistic_filter(frame, False)
@@ -91,7 +90,6 @@ def impressionism_popup(frame):
 def place_segmentation(debug_image):
     if seg_object is not None and pickup_point is not None and placement_point is not None:
         difference = np.array(placement_point) - np.array(pickup_point)
-        print(difference)
         shift_y = int(difference[1])  # col
         shift_x = int(difference[0])  # row
         if shift_x > 0:
@@ -288,10 +286,8 @@ def main():
                     elif selection_mode == selection_modes["panoroma"]:
                         if hand_sign_id == 2:
                             if (landmark_list[8][0] > point_history[-3][0]):
-                                print("right")
                                 view_start += view_shift_speed
                             else:
-                                print("left")
                                 view_start -= view_shift_speed
                             view_start = min(
                                 max(0, view_start), panorama_width - view_width)
@@ -322,11 +318,8 @@ def main():
 
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
                             placement_point = landmark_list[8]
-                            print("PLACE")
-                            print(landmark_list[8])
                             debug_image = place_segmentation(debug_image)
                         if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
-                            print("AHHHHHH")
                             debug_image = place_segmentation(debug_image)
         
                 # gesture classification
