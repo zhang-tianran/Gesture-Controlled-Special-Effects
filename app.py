@@ -226,11 +226,9 @@ def main():
         if results.multi_hand_landmarks is not None:
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
-                # ランドマークの計算
+                # process landmarks
                 landmark_list = calc_landmark_list(debug_image, hand_landmarks)
                 brect = calc_bounding_rect(debug_image, hand_landmarks)
-
-                # 相対座標・正規化座標への変換
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
                 pre_processed_point_history_list = pre_process_point_history(
@@ -238,6 +236,7 @@ def main():
                 logging_csv(number, mode, pre_processed_landmark_list,
                             pre_processed_point_history_list)
 
+                # process hand sign id
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
                 if (hand_sign_id == 0):
                     hand_sign_id = -1
@@ -329,12 +328,10 @@ def main():
                     finger_gesture_id = point_history_classifier(
                         pre_processed_point_history_list)
 
-                # 直近検出の中で最多のジェスチャーIDを算出
+                # generate information
                 finger_gesture_history.append(finger_gesture_id)
                 most_common_fg_id = Counter(
-                    finger_gesture_history).most_common()
-
-                # generate information
+                finger_gesture_history).most_common()
                 debug_image = draw_bounding_rect(True, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
                 debug_image = draw_info_text(
