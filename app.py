@@ -15,7 +15,7 @@ from model import KeyPointClassifier
 from model import PointHistoryClassifier
 
 from utils.helpers import *
-from selfie_segmentation import segment_selfie
+from effects.selfie_segmentation import segment_selfie
 from effects.gen_segmentation import segment_image, get_segmented_object
 from effects.point_art import *
 from effects.collect_effects import *
@@ -283,8 +283,8 @@ def main():
                             debug_image = cartoon_effect(
                                 debug_image, color_change=True)
                     elif selection_mode == selection_modes["panoroma"]:
-                        if hand_sign_id == 2:
-                            if (landmark_list[8][0] > point_history[-3][0]):
+                        if hand_sign_id == 1:
+                            if (landmark_list[8][0] > point_history[-2][0]):
                                 view_start += view_shift_speed
                             else:
                                 view_start -= view_shift_speed
