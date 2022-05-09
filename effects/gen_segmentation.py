@@ -1,3 +1,4 @@
+from tkinter.messagebox import NO
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
@@ -6,7 +7,6 @@ from keras_segmentation.pretrained import pspnet_50_ADE_20K
 # model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
 
 model = None
-
 
 def get_segmented_object(seg, img, point):
     color = np.array(seg[point[0], point[1], :])
