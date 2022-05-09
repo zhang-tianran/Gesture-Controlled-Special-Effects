@@ -289,8 +289,8 @@ def main():
                             debug_image = cartoon_effect(
                                 debug_image, color_change=True)
                     elif selection_mode == selection_modes["panoroma"]:
-                        if hand_sign_id == 2:
-                            if (landmark_list[8][0] > point_history[-3][0]):
+                        if hand_sign_id == 1:
+                            if (landmark_list[8][0] > point_history[-2][0]):
                                 view_start += view_shift_speed
                             else:
                                 view_start -= view_shift_speed
