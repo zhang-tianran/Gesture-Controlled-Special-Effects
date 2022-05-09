@@ -267,6 +267,8 @@ def main():
                             cv.destroyWindow("impressionism")
                         except Exception as e:
                             raise e
+                    else: 
+                        display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel"
                 else:
                     if selection_mode == selection_modes["tunnel"]:
                         debug_image = tunnel_effect(
@@ -307,6 +309,7 @@ def main():
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
                     elif selection_mode == selection_modes["drawing"]:
+                        display_text += "Clear the canvas with 5!"
                         h, w, c = debug_image.shape
                         if hand_sign_id == 5: 
                             canvas = np.zeros((h, w, c))
