@@ -291,8 +291,8 @@ def main():
                             display_text += "2: Selfie Segmentation\n4: General Segmentation \n"
                             display_text += "(Note: pause for a bit if choose 4)\n"
                         else:
-                            display_text += "Slide segmented sticker around with 1\n"
-                            display_text += "Set sticker position temporarily by holding 5\n" 
+                            display_text += "Slide sticker around with 1\n"
+                            display_text += "Set position temporarily with 5\n" 
                             display_text += "Reset with 6! \n"                    
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
                             placement_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
