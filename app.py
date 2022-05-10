@@ -43,7 +43,10 @@ selection_modes = {
 def display_selection_mode(selection_mode, display_text):
     selection_mode_found = False
     for a_key in selection_modes:
-        if (selection_mode == selection_modes["effect"]):
+        if (selection_mode == selection_modes["select"]): 
+            display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel\n"
+            break
+        elif (selection_mode == selection_modes["effect"]):
             text = "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
             display_text = text + display_text
             break
@@ -60,8 +63,6 @@ def display_selection_mode(selection_mode, display_text):
 
 def add_text(frame, text):
     font = cv.FONT_HERSHEY_SIMPLEX
-    pos = (100, 200)
-    org = (50, 50)
     fontScale = 1
     color = (255, 255, 255)
     thickness = 3
@@ -71,8 +72,6 @@ def add_text(frame, text):
         y = y0 + i*dy
         cv.putText(frame, line, (50, y), font, fontScale, color, thickness)
 
-    #  cv.putText(frame, text, pos, font,
-    #                 fontScale, color, thickness, cv.LINE_AA)
     return frame
 
 def stylization_popup(stylization_model, frame, style_image):
@@ -124,9 +123,6 @@ def place_segmentation(debug_image):
         G_mask_temp = G_mask[start_row:end_row, start_col:end_col]
 
         condition = np.stack((G_mask_temp,) * 3, axis=-1) > 0.6
-        # height, width = output.shape[:2]
-        # resize the background image to the same size of the original frame
-        # bg_image = cv2.resize(bg_image, (width, height))
 
         debug_image[start_row_debug:end_row_debug,
                     start_col_debug:end_col_debug, :] = np.where(condition, rel_seg_obj, debug_image[start_row_debug:end_row_debug,
@@ -248,9 +244,14 @@ def main():
                     point_history.append(landmark_list[8])
 
                 # mode selection ####################################################################
-                if (selection_mode == selection_modes["select"] and hand_sign_id != 0):
-                    in_mode = False
-                    selection_mode = hand_sign_id
+                if ((selection_mode == selection_modes["select"] and hand_sign_id != 0)):
+
+                    if (hand_sign_id < len(selection_modes)): 
+                        in_mode = False
+                        selection_mode = hand_sign_id
+                    else: 
+                        hand_sign_id = 0
+                        selection_mode = selection_mode["select"]
                 elif (hand_sign_id == 0):
                     if (frame_num % 50 < 12):
                         # clear
@@ -270,8 +271,6 @@ def main():
                             cv.destroyWindow("impressionism")
                         except Exception as e:
                             raise e
-                    else: 
-                        display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel"
                 # Entering modes
                 else:
                     if selection_mode == selection_modes["tunnel"]:

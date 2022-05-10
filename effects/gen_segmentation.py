@@ -1,12 +1,29 @@
-from tkinter.messagebox import NO
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
-from keras_segmentation.pretrained import pspnet_50_ADE_20K
+#  from keras_segmentation.pretrained import pspnet_50_ADE_20K
+from keras_segmentation.pretrained import model_from_checkpoint_path
+import tensorflow.keras as keras
 
-# model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
 
-model = None
+#  model = None
+
+def pspnet_50_ADE_20K(): 
+    model_config = {
+            "input_height": 473,
+            "input_width": 473,
+            "n_classes": 150,
+            "model_class": "pspnet_50",
+            }
+
+    model_url = "https://www.dropbox.com/s/" \
+            "0uxn14y26jcui4v/pspnet50_ade20k.h5?dl=1"
+    latest_weights = keras.utils.get_file("pspnet50_ade20k.h5", model_url)
+
+    return model_from_checkpoint_path(model_config, latest_weights)
+
+model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
+
 
 def get_segmented_object(seg, img, point):
     color = np.array(seg[point[0], point[1], :])
