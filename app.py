@@ -45,7 +45,7 @@ def display_selection_mode(selection_mode, display_text):
             display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel\n"
             break
         elif (selection_mode == selection_modes["effect"]):
-            text = "1. ghibli\n2. cartoon\n3. point art\n4. avatar\n"
+            text = "1. mural\n2. cartoon\n3. point art\n4. avatar\n"
             display_text = text + display_text
             break
         elif selection_mode == selection_modes[a_key]:
@@ -161,7 +161,7 @@ def main():
     # modes setup ###########################################################
     stylization_model = hub.load("model/image_stylization")
     style_image_og = cv.cvtColor(
-        cv.imread("assets/ghibli-style.png"), cv.COLOR_BGR2RGB)
+        cv.imread("assets/mural-style.png"), cv.COLOR_BGR2RGB)
     style_image_og = img_as_float32(style_image_og)
     style_image_og = tf.expand_dims(style_image_og, 0)
 
@@ -265,7 +265,7 @@ def main():
                         debug_image = tunnel_effect(
                             debug_image, landmark_list[9])
                     elif selection_mode == selection_modes["effect"]:
-                        if (hand_sign_id == 1):  # ghibli stylization
+                        if (hand_sign_id == 1):  # mural stylization
                             stylization_popup(
                                 stylization_model, debug_image, style_image_og)
                         elif (hand_sign_id == 2):  # cartoon
