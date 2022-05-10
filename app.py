@@ -303,10 +303,12 @@ def main():
                                                     view_start:view_start+view_width]
                         cv.imshow('panorama-view', panorama_in_view)
                     elif selection_mode == selection_modes["segmentation"]:
-                        display_text += "First, Choose 2 = Selfie Segmentation or 4 = General Segmentation \n"
-                        display_text += "(Note: pause for a bit if choose 4)\n"
-                        display_text += "Slide segmentation around with 1\n"
-                        display_text += "Set segmentation position temporarily by holding 5\n"
+                        if hand_sign_id == 3:
+                            display_text += "First, Choose 2 = Selfie Segmentation or 4 = General Segmentation \n"
+                            display_text += "(Note: pause for a bit if choose 4)\n"
+                        else:
+                            display_text += "Slide segmentation around with 1\n"
+                            display_text += "Set segmentation position temporarily by holding 5\n"                         
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
                             placement_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
                                 max(0, landmark_list[8][1]), debug_image.shape[0])]
