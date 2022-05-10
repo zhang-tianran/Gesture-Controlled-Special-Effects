@@ -52,9 +52,6 @@ def display_selection_mode(selection_mode, display_text):
             text = a_key + "\n"
             display_text = text + display_text
             break
-    #  if not selection_mode_found:
-    #      display_text += "Selection mode not found\n"
-
     return display_text
 
 
