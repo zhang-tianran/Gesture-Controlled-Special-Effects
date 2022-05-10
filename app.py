@@ -253,8 +253,8 @@ def main():
                         hand_sign_id = 0
                         selection_mode = selection_mode["select"]
                 elif (hand_sign_id == 0):
+                    # clear
                     if (frame_num % 50 < 12):
-                        # clear
                         display_text += "Entered selection mode!\nChoose a mode\n"
                         selection_mode = selection_modes["select"]
                         G_seg_image = None
@@ -314,7 +314,7 @@ def main():
                                 pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(max(0, landmark_list[8][1]), debug_image.shape[0])]
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
-                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                        elif hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
                         display_text += "Clear the canvas with 5!\n"
