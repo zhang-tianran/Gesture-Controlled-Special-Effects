@@ -55,8 +55,8 @@ def display_selection_mode(selection_mode, display_text):
             display_text = text + display_text
             selection_mode_found = True
             break
-    if not selection_mode_found:
-        display_text += "Selection mode not found\n"
+    #  if not selection_mode_found:
+    #      display_text += "Selection mode not found\n"
 
     return display_text
 
@@ -255,7 +255,7 @@ def main():
                 elif (hand_sign_id == 0):
                     # clear
                     if (frame_num % 50 < 12):
-                        display_text += "Entered selection mode!\nChoose a mode\n"
+                        #  display_text += "Entered selection mode!\nChoose a mode\n"
                         selection_mode = selection_modes["select"]
                         G_seg_image = None
                         seg_object = None
