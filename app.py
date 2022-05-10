@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import csv
 import copy
-from collections import Counter
 from collections import deque
 
 from skimage import img_as_float32
@@ -12,7 +11,6 @@ import numpy as np
 import mediapipe as mp
 
 from model import KeyPointClassifier
-from model import PointHistoryClassifier
 
 from utils.helpers import *
 from effects.selfie_segmentation import segment_selfie
@@ -42,7 +40,6 @@ selection_modes = {
 
 
 def display_selection_mode(selection_mode, display_text):
-    selection_mode_found = False
     for a_key in selection_modes:
         if (selection_mode == selection_modes["select"]):
             display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel\n"
@@ -54,11 +51,7 @@ def display_selection_mode(selection_mode, display_text):
         elif selection_mode == selection_modes[a_key]:
             text = a_key + "\n"
             display_text = text + display_text
-            selection_mode_found = True
             break
-    #  if not selection_mode_found:
-    #      display_text += "Selection mode not found\n"
-
     return display_text
 
 
@@ -156,7 +149,6 @@ def main():
     )
 
     keypoint_classifier = KeyPointClassifier()
-    point_history_classifier = PointHistoryClassifier()
 
     # read models ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
@@ -164,13 +156,6 @@ def main():
         keypoint_classifier_labels = csv.reader(f)
         keypoint_classifier_labels = [
             row[0] for row in keypoint_classifier_labels
-        ]
-    with open(
-            'model/point_history_classifier/point_history_classifier_label.csv',
-            encoding='utf-8-sig') as f:
-        point_history_classifier_labels = csv.reader(f)
-        point_history_classifier_labels = [
-            row[0] for row in point_history_classifier_labels
         ]
 
     # modes setup ###########################################################
@@ -192,7 +177,6 @@ def main():
     # point & gesture history generation #################################################################
     history_length = 16
     point_history = deque(maxlen=history_length)
-    finger_gesture_history = deque(maxlen=history_length)
 
     #  ########################################################################
     mode = 0
@@ -336,18 +320,8 @@ def main():
                             in_mode = True
                             canvas = cv.resize(canvas, (w, h))
                             canvas = drawing(canvas, point_history)
-
-                # gesture classification ####################################################################
-                finger_gesture_id = 0
-                point_history_len = len(pre_processed_point_history_list)
-                if point_history_len == (history_length * 2):
-                    finger_gesture_id = point_history_classifier(
-                        pre_processed_point_history_list)
-
-                # generate information
-                finger_gesture_history.append(finger_gesture_id)
-                most_common_fg_id = Counter(
-                    finger_gesture_history).most_common()
+        
+                # generate information ####################################################################
                 debug_image = draw_bounding_rect(True, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
                 debug_image = draw_info_text(
@@ -355,7 +329,7 @@ def main():
                     brect,
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
-                    point_history_classifier_labels[most_common_fg_id[0][0]],
+                    ""
                 )
         else:
             point_history.append([0, 0])
