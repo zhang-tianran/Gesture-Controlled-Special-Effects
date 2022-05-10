@@ -15,7 +15,7 @@ def pspnet_50_ADE_20K():
 
     model_url = "https://www.dropbox.com/s/0uxn14y26jcui4v/pspnet50_ade20k.h5?dl=1"
 
-    latest_weights  = "/Users/ztr/.keras/models/pspnet50_ade20k.h5"
+    latest_weights  = "model/pspnet50_ade20k.h5"
     
     return model_from_checkpoint_path(model_config, latest_weights)
 
