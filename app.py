@@ -300,19 +300,21 @@ def main():
                         cv.imshow('panorama-view', panorama_in_view)
                     elif selection_mode == selection_modes["segmentation"]:
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
-                            placement_point = landmark_list[8]
+                            placement_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
+                                max(0, landmark_list[8][1]), debug_image.shape[0])]
                             debug_image = place_segmentation(debug_image)
                         elif hand_sign_id == 2 and G_seg_image is None:
                                 G_mask, G_seg_image = segment_selfie(
                                     debug_image)
-                                pickup_point = landmark_list[8]
+                                pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
+                                    max(0, landmark_list[8][1]), debug_image.shape[0])]
                                 seg_object = G_seg_image
                         elif hand_sign_id == 4 and G_seg_image is None:
                                 G_seg_image = segment_image(debug_image)
-                                pickup_point = landmark_list[8]
+                                pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(max(0, landmark_list[8][1]), debug_image.shape[0])]
                                 G_mask, seg_object = get_segmented_object(
                                     G_seg_image, debug_image, pickup_point)
-                        elif hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
+                        if hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
                         display_text += "Clear the canvas with 5!\n"
