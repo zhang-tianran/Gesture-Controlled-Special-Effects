@@ -1,9 +1,6 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-import math
-import os
-
 
 def replace_background(fg, bg):
     bg_image = bg
