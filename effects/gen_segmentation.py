@@ -4,6 +4,7 @@ import cv2
 from keras_segmentation.pretrained import model_from_checkpoint_path
 import tensorflow.keras as keras
 
+
 def pspnet_50_ADE_20K(): 
     model_config = {
             "input_height": 473,
@@ -12,10 +13,10 @@ def pspnet_50_ADE_20K():
             "model_class": "pspnet_50",
             }
 
-    model_url = "https://www.dropbox.com/s/" \
-            "0uxn14y26jcui4v/pspnet50_ade20k.h5?dl=1"
-    latest_weights = keras.utils.get_file("pspnet50_ade20k.h5", model_url)
+    model_url = "https://www.dropbox.com/s/0uxn14y26jcui4v/pspnet50_ade20k.h5?dl=1"
 
+    latest_weights  = "model/pspnet50_ade20k.h5"
+    
     return model_from_checkpoint_path(model_config, latest_weights)
 
 model = pspnet_50_ADE_20K()  # load the pretrained model trained on ADE20k dataset
