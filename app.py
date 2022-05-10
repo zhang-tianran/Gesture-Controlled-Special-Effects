@@ -11,7 +11,6 @@ import numpy as np
 import mediapipe as mp
 
 from model import KeyPointClassifier
-from model import PointHistoryClassifier
 
 from utils.helpers import *
 from effects.selfie_segmentation import segment_selfie
@@ -39,9 +38,10 @@ selection_modes = {
     "tunnel": 5,
 }
 
+
 def display_selection_mode(selection_mode, display_text):
     for a_key in selection_modes:
-        if (selection_mode == selection_modes["select"]): 
+        if (selection_mode == selection_modes["select"]):
             display_text += "1. drawing\n2. graphic effects\n3. segmentation\n4. panaroma\n5. light tunnel\n"
             break
         elif (selection_mode == selection_modes["effect"]):
@@ -71,6 +71,7 @@ def add_text(frame, text):
 
     return frame
 
+
 def stylization_popup(stylization_model, frame, style_image):
     temp_debug_image = frame
     temp_debug_image = tf.expand_dims(temp_debug_image, 0)
@@ -81,9 +82,11 @@ def stylization_popup(stylization_model, frame, style_image):
     img = np.asarray(img[0][0])
     cv.imshow("stylization", img)
 
+
 def impressionism_popup(frame):
     impressionism = run_impressionistic_filter(frame, False)
     cv.imshow("impressionism", impressionism)
+
 
 def place_segmentation(debug_image):
     if seg_object is not None and pickup_point is not None and placement_point is not None:
@@ -241,10 +244,10 @@ def main():
                 # mode selection ####################################################################
                 if ((selection_mode == selection_modes["select"] and hand_sign_id != 0)):
 
-                    if (hand_sign_id < len(selection_modes)): 
+                    if (hand_sign_id < len(selection_modes)):
                         in_mode = False
                         selection_mode = hand_sign_id
-                    else: 
+                    else:
                         hand_sign_id = 0
                         selection_mode = selection_mode["select"]
                 elif (hand_sign_id == 0):
@@ -294,29 +297,34 @@ def main():
                                                     view_start:view_start+view_width]
                         cv.imshow('panorama-view', panorama_in_view)
                     elif selection_mode == selection_modes["segmentation"]:
+                        display_text += "First, Choose 2 = Selfie Segmentation or 4 = General Segmentation \n"
+                        display_text += "(Note: pause for a bit if choose 4)\n"
+                        display_text += "Slide segmentation around with 1\n"
+                        display_text += "Set segmentation position temporarily by holding 5\n"
                         if hand_sign_id == 1 and G_seg_image is not None and seg_object is not None:
                             placement_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
                                 max(0, landmark_list[8][1]), debug_image.shape[0])]
                             debug_image = place_segmentation(debug_image)
                         elif hand_sign_id == 2 and G_seg_image is None:
-                                G_mask, G_seg_image = segment_selfie(
-                                    debug_image)
-                                pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
-                                    max(0, landmark_list[8][1]), debug_image.shape[0])]
-                                seg_object = G_seg_image
+                            G_mask, G_seg_image = segment_selfie(
+                                debug_image)
+                            pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
+                                max(0, landmark_list[8][1]), debug_image.shape[0])]
+                            seg_object = G_seg_image
                         elif hand_sign_id == 4 and G_seg_image is None:
-                                G_seg_image = segment_image(debug_image)
-                                pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(max(0, landmark_list[8][1]), debug_image.shape[0])]
-                                G_mask, seg_object = get_segmented_object(
-                                    G_seg_image, debug_image, pickup_point)
+                            G_seg_image = segment_image(debug_image)
+                            pickup_point = [min(max(0, landmark_list[8][0]), debug_image.shape[1]), min(
+                                max(0, landmark_list[8][1]), debug_image.shape[0])]
+                            G_mask, seg_object = get_segmented_object(
+                                G_seg_image, debug_image, pickup_point)
                         elif hand_sign_id == 5 and seg_object is not None and pickup_point is not None and placement_point is not None:
                             debug_image = place_segmentation(debug_image)
                     elif selection_mode == selection_modes["drawing"]:
                         display_text += "Clear the canvas with 5!\n"
                         h, w, c = debug_image.shape
-                        if hand_sign_id == 5: 
+                        if hand_sign_id == 5:
                             canvas = np.zeros((h, w, c))
-                        else: 
+                        else:
                             in_mode = True
                             canvas = cv.resize(canvas, (w, h))
                             canvas = drawing(canvas, point_history)
@@ -339,10 +347,11 @@ def main():
         add_text(debug_image, display_text)
 
         # show image
-        if (in_mode): 
-            final = cv.addWeighted(canvas.astype('uint8'), 1, debug_image, 1, 0)
+        if (in_mode):
+            final = cv.addWeighted(canvas.astype(
+                'uint8'), 1, debug_image, 1, 0)
             cv.imshow('Hand Gesture Recognition', final)
-        else: 
+        else:
             cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
